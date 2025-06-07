@@ -1,7 +1,23 @@
-import './App.css';
+import Home from './pages/Home';
+import TopBar from './components/TopBar';
+import { useState } from 'react';
 
 function App() {
-  return <div className="text-3xl font-bold text-blue-500">Hello, Tailwind!</div>;
+  const [selectedTab, setSelectedTab] = useState('Home');
+  const handleMenuItemClick = (item: string) => {
+    setSelectedTab(item);
+  };
+
+  return (
+    <>
+      <TopBar
+        tabs={['Home', 'Marketplace', 'Portfolio', 'About Us']}
+        selectedTab={selectedTab}
+        onMenuItemClick={handleMenuItemClick}
+      />
+      <Home />
+    </>
+  );
 }
 
 export default App;
