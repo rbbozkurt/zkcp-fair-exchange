@@ -5,6 +5,9 @@ pragma solidity ^0.8.28;
 
 contract Escrow {
 
+    // the purchase structure holds the information about each purchase
+    // it includes the buyer, seller, amount, and a boolean to indicate if the purchase is complete
+
     struct Purchase {
         address buyer;
         address seller;
@@ -15,7 +18,7 @@ contract Escrow {
     mapping(uint256 => Purchase) public purchases;
     uint256 public nextPurchaseId;
 
-    event PurchaseCreated(uint256 purchaseId, address buyer, address seller, uint256 amount);
+    event PurchaseSubmitted(uint256 purchaseId, address buyer, address seller, uint256 amount);
     event PaymentMade(uint256 purchaseId, address buyer);
     event DatasetDelivered(uint256 purchaseId, address seller);
     event PurchaseCompleted(uint256 purchaseId);
@@ -26,7 +29,10 @@ contract Escrow {
         nextPurchaseId = 1; // start from 1
     }
 
-    function createPurchase(address seller, string memory datasetInfo) public payable returns (uint256) {
+     // function for the buyer to initiate a purchase, specifying the seller and the dataset information they want to buy
+     // isComplete flag is set to false initially, indicating that the purchase is not yet complete. The flags will be more detailed later
+
+    function submitPurchase(address seller, string memory datasetInfo) public payable returns (uint256) {
         require(msg.value > 0, "Amount must be greater than 0");
         require(seller != address(0), "Seller address cannot be zero");
         require(seller != msg.sender, "Buyer cannot be the seller");
@@ -41,7 +47,7 @@ contract Escrow {
             isComplete: false
         });
 
-        emit PurchaseCreated(purchaseId, msg.sender, seller, msg.value);
+        emit PurchaseSubmitted(purchaseId, msg.sender, seller, msg.value);
         return purchaseId;
     }
 
