@@ -1,21 +1,25 @@
 import React from 'react';
 import WalletConnectButton from './WalletConnectButton';
 import { useTranslation } from 'react-i18next';
+import { Link, useLocation } from 'react-router-dom';
 
-interface TopBarProps {
-  tabs: string[];
-  selectedTab: string;
-  onMenuItemClick: (tab: string) => void;
+interface Tab {
+  name: string;
+  path: string;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ tabs, selectedTab, onMenuItemClick }) => {
+interface TopBarProps {
+  tabs: Tab[];
+}
+
+const TopBar: React.FC<TopBarProps> = ({ tabs }) => {
   return (
     <header className="fixed top-4 left-0 w-full h-20 bg-transparent z-50 flex items-center justify-between">
       <div className="pl-6">
         <Logo />
       </div>
       <div className="absolute left-1/2 -translate-x-1/2">
-        <Menu tabs={tabs} selectedTab={selectedTab} onItemClick={onMenuItemClick} />
+        <Menu tabs={tabs} />
       </div>
       <div className="pr-6">
         <WalletButton />
@@ -36,33 +40,30 @@ const Logo: React.FC = () => {
 };
 
 interface MenuProps {
-  tabs: string[];
-  selectedTab: string;
-  onItemClick: (tab: string) => void;
+  tabs: Tab[];
 }
 
-const Menu: React.FC<MenuProps> = ({ tabs, selectedTab, onItemClick }) => (
-  <div className="backdrop-blur-lg bg-black/10 border rounded-full px-0 h-16 flex items-center space-x-8">
-    {tabs.map((tab) => {
-      const isActive = tab === selectedTab;
-      return (
-        <a
-          key={tab}
-          href="#"
-          className={`h-16 px-6 flex items-center justify-center rounded-full font-medium transition-colors duration-250 ${
-            isActive ? 'bg-white text-black border-black' : 'text-white'
-          }`}
-          onClick={(e) => {
-            e.preventDefault();
-            onItemClick(tab);
-          }}
-        >
-          {tab}
-        </a>
-      );
-    })}
-  </div>
-);
+const Menu: React.FC<MenuProps> = ({ tabs }) => {
+  const location = useLocation();
+  return (
+    <div className="backdrop-blur-lg bg-black/10 border rounded-full px-0 h-16 flex items-center space-x-8">
+      {tabs.map((tab) => {
+        const isActive = location.pathname === tab.path;
+        return (
+          <Link
+            key={tab.name}
+            to={tab.path}
+            className={`h-16 px-6 flex items-center justify-center rounded-full font-medium transition-colors duration-250 ${
+              isActive ? 'bg-white text-black border-black' : 'text-white'
+            }`}
+          >
+            {tab.name}
+          </Link>
+        );
+      })}
+    </div>
+  );
+};
 
 const WalletButton: React.FC = () => (
   <div className="pr-6">
