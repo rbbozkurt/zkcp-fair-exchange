@@ -1,5 +1,6 @@
 import React from 'react';
 import WalletConnectButton from './WalletConnectButton';
+import { useTranslation } from 'react-i18next';
 
 interface TopBarProps {
   tabs: string[];
@@ -25,11 +26,14 @@ const TopBar: React.FC<TopBarProps> = ({ tabs, selectedTab, onMenuItemClick }) =
 
 export default TopBar;
 
-const Logo: React.FC = () => (
-  <div className="h-16 flex items-center gap-2 px-6 rounded-full backdrop-blur-lg bg-black text-white text-lg backdrop-blur-md shadow-md hover:shadow-lg hover:scale-105 hover:text-pink-400 transition-all duration-200 cursor-pointer">
-    <span>ZKCP</span>
-  </div>
-);
+const Logo: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="h-16 flex items-center gap-2 px-6 rounded-full backdrop-blur-lg bg-black text-white text-lg backdrop-blur-md shadow-md hover:shadow-lg hover:scale-105 hover:text-pink-400 transition-all duration-200 cursor-pointer">
+      <span>{t('app.name')}</span>
+    </div>
+  );
+};
 
 interface MenuProps {
   tabs: string[];

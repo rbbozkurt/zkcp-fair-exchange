@@ -2,8 +2,11 @@ import React from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Wallet } from 'lucide-react';
 import { ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const WalletConnectButton: React.FC = () => {
+  const { t } = useTranslation();
+
   return (
     <ConnectButton.Custom>
       {({ account, chain, openConnectModal, openAccountModal, openChainModal, mounted }) => {
@@ -24,14 +27,14 @@ const WalletConnectButton: React.FC = () => {
                 className="h-16 flex items-center border border-white gap-2 px-6 rounded-full bg-black/30 text-white font-medium shadow-md hover:shadow-lg hover:scale-105 hover:text-pink-400 transition-all duration-200"
               >
                 <Wallet className="w-5 h-5" />
-                Connect Wallet
+                {t('topbar.connect_wallet')}
               </button>
             ) : chain.unsupported ? (
               <button
                 onClick={openChainModal}
                 className="h-10 px-4 bg-red-600 text-white rounded-lg"
               >
-                Wrong network
+                {t('topbar.wrong_network')}
               </button>
             ) : (
               <div className="flex gap-2 items-center">

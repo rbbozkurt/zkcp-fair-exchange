@@ -1,0 +1,43 @@
+{
+  "app": {
+    "name": "ZKCP"
+  },
+  "topbar": {
+    "connect_wallet": "Connect Wallet",
+    "wrong_network": "Wrong network"
+  },
+  "wallet": {
+    "chain": "Network",
+    "account": {
+      "ens": "ENS Name",
+      "display": "Display Name",
+      "balance": "Balance"
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Empowering <1>Privacy</1> Through <3>Zero-Knowledge</3>",
+      "typed": [
+        "Decentralized Fair Exchange",
+        "Trustless Transactions",
+        "Built with zk-SNARKs & Solidity",
+        "Secure. Transparent. Efficient."
+      ]
+    },
+    "features_title": "Key Features",
+    "features": {
+      "privacy": {
+        "title": "Privacy First",
+        "description": "Zero-knowledge proofs ensure complete confidentiality of transactions."
+      },
+      "instant": {
+        "title": "Instant Settlement",
+        "description": "Transactions are executed trustlessly and finalized immediately."
+      },
+      "secure": {
+        "title": "Secure Protocols",
+        "description": "Built using industry-grade cryptographic primitives and smart contracts."
+      }
+    }
+  }
+}
