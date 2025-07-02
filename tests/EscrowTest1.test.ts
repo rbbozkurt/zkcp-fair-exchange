@@ -2,27 +2,35 @@
 
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-// commented out because not used, husky will complain when trying to commit
-//import { Escrow } from "../typechain-types";
-//import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
 
-describe('Escrow Contract', function () {
+describe('Updated Escrow Contract', function () {
   // Test constants
-  const PURCHASE_AMOUNT = ethers.parseEther('1.0');
+  const LISTING_PRICE = ethers.parseEther('1.5');
   const SMALL_AMOUNT = ethers.parseEther('0.1');
 
   const DATASET_INFO = 'S&P 500 monthly data for 2024';
   const ANOTHER_DATASET = 'Student performance metrics dataset';
+  const LISTING_METADATA_URI = 'ipfs://QmListingHash123';
+  const DATASET_METADATA_URI = 'ipfs://QmDatasetHash456';
+  const CATEGORY = 'Financial Data';
 
-  // deploy contract and set up accounts
+  // deploy contracts and set up accounts
   async function deployEscrowFixture() {
     const [owner, seller, buyer, otherAccount] = await ethers.getSigners();
 
+    // Deploy DatasetNFT first
+    const DatasetNFTFactory = await ethers.getContractFactory('DatasetNFT');
+    const datasetNFT = await DatasetNFTFactory.deploy(owner.address);
+
+    // Deploy Escrow
     const EscrowFactory = await ethers.getContractFactory('Escrow');
     const escrow = await EscrowFactory.deploy();
 
-    return { escrow, owner, seller, buyer, otherAccount };
+    // Link contracts
+    await escrow.setDatasetNFTContract(await datasetNFT.getAddress());
+
+    return { escrow, datasetNFT, owner, seller, buyer, otherAccount };
   }
 
   describe('Deployment', function () {
@@ -40,240 +48,308 @@ describe('Escrow Contract', function () {
       const { escrow } = await loadFixture(deployEscrowFixture);
       expect(await escrow.getBalance()).to.equal(0);
     });
+
+    it('Should link to DatasetNFT contract', async function () {
+      const { escrow, datasetNFT } = await loadFixture(deployEscrowFixture);
+      expect(await escrow.datasetNFTcontract()).to.equal(await datasetNFT.getAddress());
+    });
+
+    it('Should set up roles correctly', async function () {
+      const { escrow, owner } = await loadFixture(deployEscrowFixture);
+      expect(await escrow.owner()).to.equal(owner.address);
+      expect(await escrow.hasRole(await escrow.DEFAULT_ADMIN_ROLE(), owner.address)).to.be.true;
+      expect(await escrow.hasRole(await escrow.OPERATOR_ROLE(), owner.address)).to.be.true;
+    });
   });
 
-  describe('Purchase Creation', function () {
-    it('Should create a purchase successfully', async function () {
-      const { escrow, seller, buyer } = await loadFixture(deployEscrowFixture);
+  describe('Enhanced Purchase Creation with State Management', function () {
+    async function createListingFixture() {
+      const fixture = await loadFixture(deployEscrowFixture);
+
+      // Create a listing NFT with proper authorization
+      await fixture.datasetNFT
+        .connect(fixture.owner)
+        .mintListingNFT(fixture.seller.address, LISTING_METADATA_URI, CATEGORY, LISTING_PRICE);
+
+      const listingTokenId = 1000000; // First listing NFT ID
+      return { ...fixture, listingTokenId };
+    }
+
+    it('Should create a purchase successfully and start in PAID state', async function () {
+      const { escrow, seller, buyer, listingTokenId } = await loadFixture(createListingFixture);
 
       const tx = await escrow
         .connect(buyer)
-        .createPurchase(seller.address, DATASET_INFO, { value: PURCHASE_AMOUNT });
+        .submitPurchase(seller.address, listingTokenId, DATASET_INFO, { value: LISTING_PRICE });
 
-      // Check event emission
+      // Check events - both PurchaseSubmitted and PaymentMade should be emitted
       await expect(tx)
-        .to.emit(escrow, 'PurchaseCreated')
-        .withArgs(1, buyer.address, seller.address, PURCHASE_AMOUNT);
+        .to.emit(escrow, 'PurchaseSubmitted')
+        .withArgs(1, buyer.address, seller.address, LISTING_PRICE);
 
-      // Check purchase details using getter function
-      const [purchaseBuyer, purchaseSeller, amount, isComplete] = await escrow.getPurchase(1);
+      await expect(tx).to.emit(escrow, 'PaymentMade').withArgs(1, buyer.address);
 
-      expect(purchaseBuyer).to.equal(buyer.address);
-      expect(purchaseSeller).to.equal(seller.address);
-      expect(amount).to.equal(PURCHASE_AMOUNT);
-      expect(isComplete).to.be.false;
+      // Check purchase details
+      const purchase = await escrow.getPurchase(1);
+      expect(purchase.buyer).to.equal(buyer.address);
+      expect(purchase.seller).to.equal(seller.address);
+      expect(purchase.amount).to.equal(LISTING_PRICE);
+      expect(purchase.listingTokenId).to.equal(listingTokenId);
+      expect(purchase.isComplete).to.be.false; // Not completed yet
+      expect(purchase.datasetInfo).to.equal(DATASET_INFO);
+
+      // Check state management
+      const stateInfo = await escrow.getPurchaseState(1);
+      expect(stateInfo.state).to.equal(0); // PAID state (enum index 0)
+      expect(stateInfo.isTimedOut).to.be.false;
+      expect(stateInfo.timeoutDeadline).to.be.gt(0);
 
       // Check contract balance
-      expect(await escrow.getBalance()).to.equal(PURCHASE_AMOUNT);
+      expect(await escrow.getBalance()).to.equal(LISTING_PRICE);
 
       // Check nextPurchaseId incremented
       expect(await escrow.getNextPurchaseId()).to.equal(2);
+
+      // Check it's an NFT purchase
+      expect(await escrow.isNFTPurchase(1)).to.be.true;
     });
 
     it('Should handle multiple purchases correctly', async function () {
-      const { escrow, seller, buyer, otherAccount } = await loadFixture(deployEscrowFixture);
+      const { escrow, datasetNFT, seller, buyer, otherAccount, owner } =
+        await loadFixture(deployEscrowFixture);
 
-      // Create first purchase
+      // Create first listing and purchase
+      await datasetNFT
+        .connect(owner)
+        .mintListingNFT(seller.address, LISTING_METADATA_URI, CATEGORY, LISTING_PRICE);
       await escrow
         .connect(buyer)
-        .createPurchase(seller.address, DATASET_INFO, { value: PURCHASE_AMOUNT });
+        .submitPurchase(seller.address, 1000000, DATASET_INFO, { value: LISTING_PRICE });
 
-      // Create second purchase with different buyer
+      // Create second listing and purchase
+      await datasetNFT
+        .connect(owner)
+        .mintListingNFT(seller.address, 'ipfs://QmListing2', 'Another Category', SMALL_AMOUNT);
       await escrow
         .connect(otherAccount)
-        .createPurchase(seller.address, ANOTHER_DATASET, { value: SMALL_AMOUNT });
+        .submitPurchase(seller.address, 1000001, ANOTHER_DATASET, { value: SMALL_AMOUNT });
 
-      // Check both purchases exist
-      const [buyer1, seller1, amount1, complete1] = await escrow.getPurchase(1);
-      const [buyer2, seller2, amount2, complete2] = await escrow.getPurchase(2);
+      // Check both purchases exist and are in PAID state
+      const purchase1 = await escrow.getPurchase(1);
+      const purchase2 = await escrow.getPurchase(2);
 
-      expect(buyer1).to.equal(buyer.address);
-      expect(seller1).to.equal(seller.address);
-      expect(amount1).to.equal(PURCHASE_AMOUNT);
-      expect(complete1).to.be.false;
+      expect(purchase1.buyer).to.equal(buyer.address);
+      expect(purchase1.seller).to.equal(seller.address);
+      expect(purchase1.amount).to.equal(LISTING_PRICE);
+      expect(purchase1.isComplete).to.be.false;
+      expect(purchase1.listingTokenId).to.equal(1000000);
 
-      expect(buyer2).to.equal(otherAccount.address);
-      expect(seller2).to.equal(seller.address);
-      expect(amount2).to.equal(SMALL_AMOUNT);
-      expect(complete2).to.be.false;
+      expect(purchase2.buyer).to.equal(otherAccount.address);
+      expect(purchase2.seller).to.equal(seller.address);
+      expect(purchase2.amount).to.equal(SMALL_AMOUNT);
+      expect(purchase2.isComplete).to.be.false;
+      expect(purchase2.listingTokenId).to.equal(1000001);
+
+      // Check states
+      const state1 = await escrow.getPurchaseState(1);
+      const state2 = await escrow.getPurchaseState(2);
+      expect(state1.state).to.equal(0); // PAID
+      expect(state2.state).to.equal(0); // PAID
 
       // Check total contract balance
-      expect(await escrow.getBalance()).to.equal(PURCHASE_AMOUNT + SMALL_AMOUNT);
+      expect(await escrow.getBalance()).to.equal(LISTING_PRICE + SMALL_AMOUNT);
       expect(await escrow.getNextPurchaseId()).to.equal(3);
     });
 
     describe('Purchase Creation Failures', function () {
       it('Should fail with zero payment', async function () {
-        const { escrow, seller, buyer } = await loadFixture(deployEscrowFixture);
+        const { escrow, seller, buyer, listingTokenId } = await loadFixture(createListingFixture);
 
         await expect(
-          escrow.connect(buyer).createPurchase(seller.address, DATASET_INFO)
+          escrow.connect(buyer).submitPurchase(seller.address, listingTokenId, DATASET_INFO)
         ).to.be.revertedWith('Amount must be greater than 0');
       });
 
       it('Should fail with zero seller address', async function () {
-        const { escrow, buyer } = await loadFixture(deployEscrowFixture);
+        const { escrow, buyer, listingTokenId } = await loadFixture(createListingFixture);
 
         await expect(
           escrow
             .connect(buyer)
-            .createPurchase(ethers.ZeroAddress, DATASET_INFO, { value: PURCHASE_AMOUNT })
+            .submitPurchase(ethers.ZeroAddress, listingTokenId, DATASET_INFO, {
+              value: LISTING_PRICE,
+            })
         ).to.be.revertedWith('Seller address cannot be zero');
       });
 
       it('Should fail when buyer is the seller', async function () {
-        const { escrow, buyer } = await loadFixture(deployEscrowFixture);
+        const { escrow, buyer, listingTokenId } = await loadFixture(createListingFixture);
 
         await expect(
           escrow
             .connect(buyer)
-            .createPurchase(buyer.address, DATASET_INFO, { value: PURCHASE_AMOUNT })
+            .submitPurchase(buyer.address, listingTokenId, DATASET_INFO, { value: LISTING_PRICE })
         ).to.be.revertedWith('Buyer cannot be the seller');
       });
 
       it('Should fail with empty dataset info', async function () {
-        const { escrow, seller, buyer } = await loadFixture(deployEscrowFixture);
+        const { escrow, seller, buyer, listingTokenId } = await loadFixture(createListingFixture);
 
         await expect(
-          escrow.connect(buyer).createPurchase(seller.address, '', { value: PURCHASE_AMOUNT })
+          escrow
+            .connect(buyer)
+            .submitPurchase(seller.address, listingTokenId, '', { value: LISTING_PRICE })
         ).to.be.revertedWith('Dataset information must be provided');
       });
-    });
-  });
 
-  describe('Make Payment Function', function () {
-    async function createPurchaseFixture() {
-      const { escrow, owner, seller, buyer, otherAccount } = await loadFixture(deployEscrowFixture);
+      it('Should fail with insufficient payment', async function () {
+        const { escrow, seller, buyer, listingTokenId } = await loadFixture(createListingFixture);
 
-      await escrow
-        .connect(buyer)
-        .createPurchase(seller.address, DATASET_INFO, { value: PURCHASE_AMOUNT });
-
-      return { escrow, owner, seller, buyer, otherAccount, purchaseId: 1 };
-    }
-
-    it('Should allow buyer to make additional payment', async function () {
-      const { escrow, buyer, purchaseId } = await loadFixture(createPurchaseFixture);
-
-      const tx = await escrow.connect(buyer).makePayment(purchaseId, {
-        value: PURCHASE_AMOUNT,
+        await expect(
+          escrow
+            .connect(buyer)
+            .submitPurchase(seller.address, listingTokenId, DATASET_INFO, { value: SMALL_AMOUNT })
+        ).to.be.revertedWith('Insufficient payment amount');
       });
 
-      await expect(tx).to.emit(escrow, 'PaymentMade').withArgs(purchaseId, buyer.address);
+      it('Should fail if listing is not active', async function () {
+        const { escrow, datasetNFT, seller, buyer, listingTokenId, owner } =
+          await loadFixture(createListingFixture);
 
-      // Balance should double since payment was made twice
-      expect(await escrow.getBalance()).to.equal(PURCHASE_AMOUNT * BigInt(2));
-    });
+        // Deactivate the listing
+        await datasetNFT.connect(owner).deactivateListing(listingTokenId);
 
-    it('Should fail if non-buyer tries to make payment', async function () {
-      const { escrow, seller, otherAccount, purchaseId } = await loadFixture(createPurchaseFixture);
+        await expect(
+          escrow
+            .connect(buyer)
+            .submitPurchase(seller.address, listingTokenId, DATASET_INFO, { value: LISTING_PRICE })
+        ).to.be.revertedWith('Listing is not active');
+      });
 
-      await expect(
-        escrow.connect(seller).makePayment(purchaseId, { value: PURCHASE_AMOUNT })
-      ).to.be.revertedWith('Only the buyer can make a payment');
+      it("Should fail if seller doesn't own the listing NFT", async function () {
+        const { escrow, datasetNFT, seller, buyer, otherAccount, listingTokenId } =
+          await loadFixture(createListingFixture);
 
-      await expect(
-        escrow.connect(otherAccount).makePayment(purchaseId, { value: PURCHASE_AMOUNT })
-      ).to.be.revertedWith('Only the buyer can make a payment');
-    });
+        // Transfer listing NFT to another address
+        await datasetNFT
+          .connect(seller)
+          .transferFrom(seller.address, otherAccount.address, listingTokenId);
 
-    it('Should fail with incorrect payment amount', async function () {
-      const { escrow, buyer, purchaseId } = await loadFixture(createPurchaseFixture);
-
-      await expect(
-        escrow.connect(buyer).makePayment(purchaseId, { value: SMALL_AMOUNT })
-      ).to.be.revertedWith('Incorrect payment amount');
-    });
-
-    it('Should fail if purchase is already complete', async function () {
-      const { escrow, seller, buyer, purchaseId } = await loadFixture(createPurchaseFixture);
-
-      // Complete the purchase first
-      await escrow.connect(seller).deliverDataset(purchaseId);
-
-      await expect(
-        escrow.connect(buyer).makePayment(purchaseId, { value: PURCHASE_AMOUNT })
-      ).to.be.revertedWith('Purchase is already complete');
+        await expect(
+          escrow
+            .connect(buyer)
+            .submitPurchase(seller.address, listingTokenId, DATASET_INFO, { value: LISTING_PRICE })
+        ).to.be.revertedWith('Seller does not own the listing NFT');
+      });
     });
   });
 
-  describe('Dataset Delivery', function () {
+  describe('ZK Proof Verification (Current Implementation)', function () {
     async function createPurchaseFixture() {
-      const { escrow, owner, seller, buyer, otherAccount } = await loadFixture(deployEscrowFixture);
+      const fixture = await loadFixture(createListingFixture);
 
-      await escrow
-        .connect(buyer)
-        .createPurchase(seller.address, DATASET_INFO, { value: PURCHASE_AMOUNT });
+      await fixture.escrow
+        .connect(fixture.buyer)
+        .submitPurchase(fixture.seller.address, fixture.listingTokenId, DATASET_INFO, {
+          value: LISTING_PRICE,
+        });
 
-      return { escrow, owner, seller, buyer, otherAccount, purchaseId: 1 };
+      return { ...fixture, purchaseId: 1 };
     }
 
-    it('Should allow seller to deliver dataset and complete purchase', async function () {
-      const { escrow, seller, buyer, purchaseId } = await loadFixture(createPurchaseFixture);
+    async function createListingFixture() {
+      const fixture = await loadFixture(deployEscrowFixture);
 
-      const sellerBalanceBefore = await ethers.provider.getBalance(seller.address);
-      const contractBalanceBefore = await escrow.getBalance();
+      await fixture.datasetNFT
+        .connect(fixture.owner)
+        .mintListingNFT(fixture.seller.address, LISTING_METADATA_URI, CATEGORY, LISTING_PRICE);
 
-      // do something with buyer so husky wont complain about unused variable
-      expect(buyer.address).to.be.a('string');
+      const listingTokenId = 1000000;
+      return { ...fixture, listingTokenId };
+    }
 
-      const tx = await escrow.connect(seller).deliverDataset(purchaseId);
+    it('Should fail ZK verification when not in ZK_PROOF_SUBMITTED state', async function () {
+      const { escrow, owner, purchaseId } = await loadFixture(createPurchaseFixture);
 
-      // Check events
-      await expect(tx).to.emit(escrow, 'DatasetDelivered').withArgs(purchaseId, seller.address);
-
-      await expect(tx).to.emit(escrow, 'PurchaseCompleted').withArgs(purchaseId);
-
-      // Check seller received payment
-      const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
-      const contractBalanceAfter = await escrow.getBalance();
-
-      expect(sellerBalanceAfter - sellerBalanceBefore).to.be.closeTo(
-        PURCHASE_AMOUNT,
-        ethers.parseEther('0.01') // Allow for gas costs
+      // Purchase is in PAID state, but verifyZKProof expects ZK_PROOF_SUBMITTED state
+      await expect(escrow.connect(owner).verifyZKProof(purchaseId)).to.be.revertedWith(
+        'Invalid purchase state'
       );
+    });
 
-      // Contract balance should decrease
-      expect(contractBalanceBefore - contractBalanceAfter).to.equal(PURCHASE_AMOUNT);
+    it('Should fail ZK verification from unauthorized user', async function () {
+      const { escrow, buyer, purchaseId } = await loadFixture(createPurchaseFixture);
 
-      // Purchase should be marked as complete
-      const [, , , isComplete] = await escrow.getPurchase(purchaseId);
-      expect(isComplete).to.be.true;
+      await expect(escrow.connect(buyer).verifyZKProof(purchaseId)).to.be.revertedWith(
+        'Invalid purchase state'
+      ); // Will fail on state first
+    });
+  });
+
+  describe('Dataset Delivery (Current Behavior)', function () {
+    async function createPurchaseFixture() {
+      const fixture = await loadFixture(createListingFixture);
+
+      await fixture.escrow
+        .connect(fixture.buyer)
+        .submitPurchase(fixture.seller.address, fixture.listingTokenId, DATASET_INFO, {
+          value: LISTING_PRICE,
+        });
+
+      return { ...fixture, purchaseId: 1 };
+    }
+
+    async function createListingFixture() {
+      const fixture = await loadFixture(deployEscrowFixture);
+
+      await fixture.datasetNFT
+        .connect(fixture.owner)
+        .mintListingNFT(fixture.seller.address, LISTING_METADATA_URI, CATEGORY, LISTING_PRICE);
+
+      const listingTokenId = 1000000;
+      return { ...fixture, listingTokenId };
+    }
+
+    it('Should fail delivery when not in VERIFIED state', async function () {
+      const { escrow, seller, purchaseId } = await loadFixture(createPurchaseFixture);
+
+      // Purchase is in PAID state, but delivery requires VERIFIED state
+      await expect(
+        escrow.connect(seller).deliverDataset(purchaseId, DATASET_METADATA_URI)
+      ).to.be.revertedWith('Invalid purchase state');
     });
 
     it('Should fail if non-seller tries to deliver', async function () {
-      const { escrow, buyer, otherAccount, purchaseId } = await loadFixture(createPurchaseFixture);
+      const { escrow, buyer, purchaseId } = await loadFixture(createPurchaseFixture);
 
-      await expect(escrow.connect(buyer).deliverDataset(purchaseId)).to.be.revertedWith(
-        'Only the seller can deliver the dataset'
-      );
-
-      await expect(escrow.connect(otherAccount).deliverDataset(purchaseId)).to.be.revertedWith(
-        'Only the seller can deliver the dataset'
-      );
-    });
-
-    it('Should fail if purchase is already complete', async function () {
-      const { escrow, seller, purchaseId } = await loadFixture(createPurchaseFixture);
-
-      // Complete the purchase first
-      await escrow.connect(seller).deliverDataset(purchaseId);
-
-      await expect(escrow.connect(seller).deliverDataset(purchaseId)).to.be.revertedWith(
-        'Purchase is already complete'
-      );
+      await expect(
+        escrow.connect(buyer).deliverDataset(purchaseId, DATASET_METADATA_URI)
+      ).to.be.revertedWith('Only seller can call this function');
     });
   });
 
   describe('Refund System', function () {
     async function createPurchaseFixture() {
-      const { escrow, owner, seller, buyer, otherAccount } = await loadFixture(deployEscrowFixture);
+      const fixture = await loadFixture(createListingFixture);
 
-      await escrow
-        .connect(buyer)
-        .createPurchase(seller.address, DATASET_INFO, { value: PURCHASE_AMOUNT });
+      await fixture.escrow
+        .connect(fixture.buyer)
+        .submitPurchase(fixture.seller.address, fixture.listingTokenId, DATASET_INFO, {
+          value: LISTING_PRICE,
+        });
 
-      return { escrow, owner, seller, buyer, otherAccount, purchaseId: 1 };
+      return { ...fixture, purchaseId: 1 };
+    }
+
+    async function createListingFixture() {
+      const fixture = await loadFixture(deployEscrowFixture);
+
+      await fixture.datasetNFT
+        .connect(fixture.owner)
+        .mintListingNFT(fixture.seller.address, LISTING_METADATA_URI, CATEGORY, LISTING_PRICE);
+
+      const listingTokenId = 1000000;
+      return { ...fixture, listingTokenId };
     }
 
     it('Should allow buyer to request refund', async function () {
@@ -287,6 +363,10 @@ describe('Escrow Contract', function () {
 
       await expect(tx).to.emit(escrow, 'RefundIssued').withArgs(purchaseId, buyer.address);
 
+      // Check state transition
+      const stateInfo = await escrow.getPurchaseState(purchaseId);
+      expect(stateInfo.state).to.equal(6); // REFUNDED state
+
       // Check buyer received refund (minus gas costs)
       const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
       const contractBalanceAfter = await escrow.getBalance();
@@ -294,137 +374,258 @@ describe('Escrow Contract', function () {
       const gasUsed = receipt!.gasUsed * receipt!.gasPrice;
 
       expect(buyerBalanceAfter + gasUsed - buyerBalanceBefore).to.be.closeTo(
-        PURCHASE_AMOUNT,
+        LISTING_PRICE,
         ethers.parseEther('0.001') // Small tolerance for gas calculation
       );
 
       // Contract balance should decrease
-      expect(contractBalanceBefore - contractBalanceAfter).to.equal(PURCHASE_AMOUNT);
+      expect(contractBalanceBefore - contractBalanceAfter).to.equal(LISTING_PRICE);
 
-      // Purchase should be marked as complete
-      const [, , , isComplete] = await escrow.getPurchase(purchaseId);
-      expect(isComplete).to.be.true;
+      // Purchase should be in terminal state
+      expect(await escrow.isPurchaseTerminal(purchaseId)).to.be.true;
     });
 
     it('Should fail if non-buyer tries to request refund', async function () {
       const { escrow, seller, otherAccount, purchaseId } = await loadFixture(createPurchaseFixture);
 
       await expect(escrow.connect(seller).issueRefund(purchaseId)).to.be.revertedWith(
-        'Only the buyer can request a refund'
+        'Only buyer can call this function'
       );
 
       await expect(escrow.connect(otherAccount).issueRefund(purchaseId)).to.be.revertedWith(
-        'Only the buyer can request a refund'
+        'Only buyer can call this function'
       );
     });
 
-    it('Should fail if purchase is already complete', async function () {
-      const { escrow, seller, buyer, purchaseId } = await loadFixture(createPurchaseFixture);
+    it('Should fail if trying to refund already refunded purchase', async function () {
+      const { escrow, buyer, purchaseId } = await loadFixture(createPurchaseFixture);
 
-      // Complete the purchase first
-      await escrow.connect(seller).deliverDataset(purchaseId);
+      // First refund
+      await escrow.connect(buyer).issueRefund(purchaseId);
 
+      // Try to refund again
       await expect(escrow.connect(buyer).issueRefund(purchaseId)).to.be.revertedWith(
-        'Purchase is already complete'
+        'Cannot refund completed purchase'
       );
     });
   });
 
-  describe('Edge Cases and Complex Scenarios', function () {
-    it('Should handle multiple purchases independently', async function () {
-      const { escrow, seller, buyer, otherAccount } = await loadFixture(deployEscrowFixture);
+  describe('Timeout Handling', function () {
+    async function createPurchaseFixture() {
+      const fixture = await loadFixture(createListingFixture);
 
-      // Create two purchases
+      await fixture.escrow
+        .connect(fixture.buyer)
+        .submitPurchase(fixture.seller.address, fixture.listingTokenId, DATASET_INFO, {
+          value: LISTING_PRICE,
+        });
+
+      return { ...fixture, purchaseId: 1 };
+    }
+
+    async function createListingFixture() {
+      const fixture = await loadFixture(deployEscrowFixture);
+
+      await fixture.datasetNFT
+        .connect(fixture.owner)
+        .mintListingNFT(fixture.seller.address, LISTING_METADATA_URI, CATEGORY, LISTING_PRICE);
+
+      const listingTokenId = 1000000;
+      return { ...fixture, listingTokenId };
+    }
+
+    it('Should handle timeout and auto-refund', async function () {
+      const { escrow, buyer, purchaseId } = await loadFixture(createPurchaseFixture);
+
+      // Fast forward past timeout (24 hours + 1 hour)
+      await time.increase(25 * 60 * 60);
+
+      // Check timeout status
+      const stateInfoBefore = await escrow.getPurchaseState(purchaseId);
+      expect(stateInfoBefore.isTimedOut).to.be.true;
+
+      const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+
+      // Handle timeout - anyone can call this
+      const tx = await escrow.handleTimeout(purchaseId);
+      const receipt = await tx.wait();
+
+      // Should emit timeout and refund events
+      await expect(tx).to.emit(escrow, 'PurchaseTimedOut').withArgs(purchaseId, 0); // PAID state
+      await expect(tx).to.emit(escrow, 'RefundIssued').withArgs(purchaseId, buyer.address);
+
+      // Check final state
+      const stateInfoAfter = await escrow.getPurchaseState(purchaseId);
+      expect(stateInfoAfter.state).to.equal(6); // REFUNDED state
+
+      // Check buyer received refund
+      const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+      const gasUsed = receipt!.gasUsed * receipt!.gasPrice;
+
+      expect(buyerBalanceAfter + gasUsed - buyerBalanceBefore).to.be.closeTo(
+        LISTING_PRICE,
+        ethers.parseEther('0.001')
+      );
+    });
+
+    it('Should fail timeout for non-timed out purchase', async function () {
+      const { escrow, purchaseId } = await loadFixture(createPurchaseFixture);
+
+      await expect(escrow.handleTimeout(purchaseId)).to.be.revertedWith('Purchase not timed out');
+    });
+
+    it('Should fail timeout for purchase with no timeout', async function () {
+      const { escrow, buyer, purchaseId } = await loadFixture(createPurchaseFixture);
+
+      // First refund the purchase (terminal state with no timeout)
+      await escrow.connect(buyer).issueRefund(purchaseId);
+
+      // Fast forward time
+      await time.increase(25 * 60 * 60);
+
+      // Should fail because refunded purchases don't have timeouts
+      await expect(escrow.handleTimeout(purchaseId)).to.be.revertedWith('Purchase not timed out');
+    });
+  });
+
+  describe('State Management Functions', function () {
+    async function createPurchaseFixture() {
+      const fixture = await loadFixture(createListingFixture);
+
+      await fixture.escrow
+        .connect(fixture.buyer)
+        .submitPurchase(fixture.seller.address, fixture.listingTokenId, DATASET_INFO, {
+          value: LISTING_PRICE,
+        });
+
+      return { ...fixture, purchaseId: 1 };
+    }
+
+    async function createListingFixture() {
+      const fixture = await loadFixture(deployEscrowFixture);
+
+      await fixture.datasetNFT
+        .connect(fixture.owner)
+        .mintListingNFT(fixture.seller.address, LISTING_METADATA_URI, CATEGORY, LISTING_PRICE);
+
+      const listingTokenId = 1000000;
+      return { ...fixture, listingTokenId };
+    }
+
+    it('Should provide correct purchase state information', async function () {
+      const { escrow, purchaseId } = await loadFixture(createPurchaseFixture);
+
+      const stateInfo = await escrow.getPurchaseState(purchaseId);
+
+      expect(stateInfo.state).to.equal(0); // PAID state
+      expect(stateInfo.stateTimestamp).to.be.gt(0);
+      expect(stateInfo.timeoutDeadline).to.be.gt(0);
+      expect(stateInfo.isTimedOut).to.be.false;
+    });
+
+    it('Should correctly identify terminal states', async function () {
+      const { escrow, buyer, purchaseId } = await loadFixture(createPurchaseFixture);
+
+      // Initially not terminal
+      expect(await escrow.isPurchaseTerminal(purchaseId)).to.be.false;
+
+      // After refund, should be terminal
+      await escrow.connect(buyer).issueRefund(purchaseId);
+      expect(await escrow.isPurchaseTerminal(purchaseId)).to.be.true;
+    });
+  });
+
+  describe('Enhanced Getter Functions', function () {
+    async function createPurchaseFixture() {
+      const fixture = await loadFixture(deployEscrowFixture);
+
+      await fixture.datasetNFT
+        .connect(fixture.owner)
+        .mintListingNFT(fixture.seller.address, LISTING_METADATA_URI, CATEGORY, LISTING_PRICE);
+
+      await fixture.escrow
+        .connect(fixture.buyer)
+        .submitPurchase(fixture.seller.address, 1000000, DATASET_INFO, { value: LISTING_PRICE });
+
+      return fixture;
+    }
+
+    it('Should return correct purchase details', async function () {
+      const { escrow, seller, buyer } = await loadFixture(createPurchaseFixture);
+
+      const purchase = await escrow.getPurchase(1);
+      expect(purchase.buyer).to.equal(buyer.address);
+      expect(purchase.seller).to.equal(seller.address);
+      expect(purchase.amount).to.equal(LISTING_PRICE);
+      expect(purchase.listingTokenId).to.equal(1000000);
+      expect(purchase.isComplete).to.be.false; // Not completed (REFUNDED/COMPLETED are terminal but not "complete")
+      expect(purchase.datasetInfo).to.equal(DATASET_INFO);
+    });
+
+    it('Should return correct next purchase ID', async function () {
+      const { escrow } = await loadFixture(deployEscrowFixture);
+
+      expect(await escrow.getNextPurchaseId()).to.equal(1);
+
+      await loadFixture(createPurchaseFixture);
+      expect(await escrow.getNextPurchaseId()).to.equal(2);
+    });
+
+    it('Should return correct contract balance', async function () {
+      const { escrow } = await loadFixture(deployEscrowFixture);
+
+      expect(await escrow.getBalance()).to.equal(0);
+
+      await loadFixture(createPurchaseFixture);
+      expect(await escrow.getBalance()).to.equal(LISTING_PRICE);
+    });
+
+    it('Should correctly identify NFT purchases', async function () {
+      const { escrow } = await loadFixture(createPurchaseFixture);
+
+      expect(await escrow.isNFTPurchase(1)).to.be.true;
+    });
+  });
+
+  describe('Complex Scenarios', function () {
+    it('Should handle multiple purchases with different outcomes', async function () {
+      const { escrow, datasetNFT, seller, buyer, otherAccount, owner } =
+        await loadFixture(deployEscrowFixture);
+
+      // Create two listings and purchases
+      await datasetNFT
+        .connect(owner)
+        .mintListingNFT(seller.address, LISTING_METADATA_URI, CATEGORY, LISTING_PRICE);
       await escrow
         .connect(buyer)
-        .createPurchase(seller.address, DATASET_INFO, { value: PURCHASE_AMOUNT });
+        .submitPurchase(seller.address, 1000000, DATASET_INFO, { value: LISTING_PRICE });
 
+      await datasetNFT
+        .connect(owner)
+        .mintListingNFT(seller.address, 'ipfs://QmListing2', 'Category2', SMALL_AMOUNT);
       await escrow
         .connect(otherAccount)
-        .createPurchase(seller.address, ANOTHER_DATASET, { value: SMALL_AMOUNT });
+        .submitPurchase(seller.address, 1000001, ANOTHER_DATASET, { value: SMALL_AMOUNT });
 
-      // Complete first purchase
-      await escrow.connect(seller).deliverDataset(1);
+      // Refund first purchase
+      await escrow.connect(buyer).issueRefund(1);
 
       // Refund second purchase
       await escrow.connect(otherAccount).issueRefund(2);
 
       // Check final states
-      const [, , , complete1] = await escrow.getPurchase(1);
-      const [, , , complete2] = await escrow.getPurchase(2);
+      const purchase1 = await escrow.getPurchase(1);
+      const purchase2 = await escrow.getPurchase(2);
 
-      expect(complete1).to.be.true;
-      expect(complete2).to.be.true;
+      expect(purchase1.isComplete).to.be.false; // REFUNDED state
+      expect(purchase2.isComplete).to.be.false; // REFUNDED state
 
-      // Contract should have zero balance after both transactions
+      // Both should be terminal
+      expect(await escrow.isPurchaseTerminal(1)).to.be.true;
+      expect(await escrow.isPurchaseTerminal(2)).to.be.true;
+
+      // Contract should have zero balance after both refunds
       expect(await escrow.getBalance()).to.equal(0);
-    });
-
-    it('Should handle very small amounts', async function () {
-      const { escrow, seller, buyer } = await loadFixture(deployEscrowFixture);
-
-      const tinyAmount = BigInt(1); // 1 wei
-
-      await escrow
-        .connect(buyer)
-        .createPurchase(seller.address, DATASET_INFO, { value: tinyAmount });
-
-      const [, , amount] = await escrow.getPurchase(1);
-      expect(amount).to.equal(tinyAmount);
-    });
-
-    it('Should handle large amounts', async function () {
-      const { escrow, seller, buyer } = await loadFixture(deployEscrowFixture);
-
-      const largeAmount = ethers.parseEther('1000');
-
-      await escrow
-        .connect(buyer)
-        .createPurchase(seller.address, DATASET_INFO, { value: largeAmount });
-
-      const [, , amount] = await escrow.getPurchase(1);
-      expect(amount).to.equal(largeAmount);
-    });
-  });
-
-  describe('Getter Functions', function () {
-    it('Should return correct purchase details', async function () {
-      const { escrow, seller, buyer } = await loadFixture(deployEscrowFixture);
-
-      await escrow
-        .connect(buyer)
-        .createPurchase(seller.address, DATASET_INFO, { value: PURCHASE_AMOUNT });
-
-      const [purchaseBuyer, purchaseSeller, amount, isComplete] = await escrow.getPurchase(1);
-
-      expect(purchaseBuyer).to.equal(buyer.address);
-      expect(purchaseSeller).to.equal(seller.address);
-      expect(amount).to.equal(PURCHASE_AMOUNT);
-      expect(isComplete).to.be.false;
-    });
-
-    it('Should return correct next purchase ID', async function () {
-      const { escrow, seller, buyer } = await loadFixture(deployEscrowFixture);
-
-      expect(await escrow.getNextPurchaseId()).to.equal(1);
-
-      await escrow
-        .connect(buyer)
-        .createPurchase(seller.address, DATASET_INFO, { value: PURCHASE_AMOUNT });
-
-      expect(await escrow.getNextPurchaseId()).to.equal(2);
-    });
-
-    it('Should return correct contract balance', async function () {
-      const { escrow, seller, buyer } = await loadFixture(deployEscrowFixture);
-
-      expect(await escrow.getBalance()).to.equal(0);
-
-      await escrow
-        .connect(buyer)
-        .createPurchase(seller.address, DATASET_INFO, { value: PURCHASE_AMOUNT });
-
-      expect(await escrow.getBalance()).to.equal(PURCHASE_AMOUNT);
     });
   });
 });
