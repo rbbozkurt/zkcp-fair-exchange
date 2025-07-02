@@ -1,22 +1,28 @@
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import TopBar from './components/TopBar';
-import { useState } from 'react';
+import { Marketplace } from './pages/Marketplace';
+import { MarketPlaceNFTDetail } from './pages/MarketPlaceNFTDetail';
+import { Portfolio } from './pages/Portfolio';
+
+const tabs = [
+  { name: 'Home', path: '/' },
+  { name: 'Marketplace', path: '/marketplace' },
+  { name: 'Portfolio', path: '/portfolio' },
+];
 
 function App() {
-  const [selectedTab, setSelectedTab] = useState('Home');
-  const handleMenuItemClick = (item: string) => {
-    setSelectedTab(item);
-  };
-
   return (
-    <>
-      <TopBar
-        tabs={['Home', 'Marketplace', 'Portfolio', 'About Us']}
-        selectedTab={selectedTab}
-        onMenuItemClick={handleMenuItemClick}
-      />
-      <Home />
-    </>
+    <Router>
+      <TopBar tabs={tabs} />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/marketplace/:ipfs_address" element={<MarketPlaceNFTDetail />} />
+        <Route path="/portfolio" element={<Portfolio />} />
+        {/* Add more routes as needed */}
+      </Routes>
+    </Router>
   );
 }
 
