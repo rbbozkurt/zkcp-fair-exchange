@@ -110,3 +110,5 @@ export async function encryptFileWithSecret(file: File, secret: string): Promise
   // Return as a File object (with .enc extension)
   return new File([result], `${file.name}.enc`, { type: 'application/octet-stream' });
 }
+
+// Trivial change: This comment was added to test git commit functionality.
