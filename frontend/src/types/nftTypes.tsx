@@ -55,6 +55,20 @@ export interface PurchasedListingNFT {
   purchaseState: PurchaseStateType; // Current state of the purchase
 }
 
+export interface UploadedDocument {
+  name: string; // Name of the document
+  description: string; // Description of the document
+  image?: File | null; // Optional image IPFS address
+  file: File; // The encrypted file to be uploaded
+  price_in_usd: number; // Price in USD
+  type: string; // Type of the file (e.g., '.pdf', '.jpg')
+  category: string; // Category of the file
+  secret: string; // Secret used for encryption
+}
+
+// make EncryptedFileResponse alias to ListingNFT
+export type EncryptedFileResponse = ListingNFTPreview;
+
 /*
 const NFTType = {
     LISTING: 0,
