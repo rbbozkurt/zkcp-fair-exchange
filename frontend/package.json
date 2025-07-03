@@ -9,9 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@rainbow-me/rainbowkit": "^2.2.6",
-    "@tanstack/react-query": "^5.80.6",
-    "axios": "^1.10.0",
+    "@rainbow-me/rainbowkit": "^2.2.8",
+    "@tanstack/react-query": "^5.81.2",
     "ethers": "^6.14.3",
     "framer-motion": "^12.16.0",
     "i18next": "^25.3.0",
@@ -24,11 +23,11 @@
     "react-i18next": "^15.5.3",
     "react-router-dom": "^6.30.1",
     "react-typed": "^2.0.12",
-    "viem": "^2.30.6",
+    "viem": "^2.31.4",
     "wagmi": "^2.15.6"
   },
   "devDependencies": {
-    "@types/react": "^19.1.2",
+    "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",
