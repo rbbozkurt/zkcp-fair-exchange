@@ -1,8 +1,43 @@
 import React from 'react';
-import type { ListingNFTPreview } from '../types/nftTypes';
+import type { PurchasedListingNFT, Role } from '../types/nftTypes';
+import { PurchaseActions } from '../types/nftTypes';
 
-interface MarketPlaceNFTCardViewProps {
-  listingNFT: ListingNFTPreview;
+// --- Stateless Action Button ---
+interface PurchaseActionButtonProps {
+  label: string;
+  enabled: boolean;
+  description?: string;
+  onClick?: () => void;
+}
+
+const PurchaseActionButton: React.FC<PurchaseActionButtonProps> = ({
+  label,
+  enabled,
+  description,
+  onClick,
+}) => (
+  <div className="mt-4">
+    {enabled ? (
+      <button
+        className={`
+          h-14 px-8 ml-4 bg-black text-white border border-white rounded-full font-bold shadow transition-all text-md
+          hover:bg-white hover:text-black hover:border-black
+        `}
+        onClick={onClick}
+      >
+        {label}
+      </button>
+    ) : (
+      <div className="text-gray-400">{label}</div>
+    )}
+    {description && <div className="text-xs text-gray-400 mt-1">{description}</div>}
+  </div>
+);
+
+// --- Card View ---
+interface PortfolioNFTPurchasedCardViewProps {
+  purchasedNFT: PurchasedListingNFT;
+  role: Role;
   onClick?: () => void;
 }
 
@@ -30,13 +65,23 @@ const NFTIpfsAddress: React.FC<{ ipfs_address: string }> = ({ ipfs_address }) =>
   </div>
 );
 
-const MarketPlaceNFTCardView: React.FC<MarketPlaceNFTCardViewProps> = ({ listingNFT, onClick }) => {
-  onClick = onClick || (() => {});
+const PortfolioNFTPurchasedCardView: React.FC<PortfolioNFTPurchasedCardViewProps> = ({
+  purchasedNFT,
+  role,
+  onClick,
+}) => {
+  const action = PurchaseActions[purchasedNFT.purchaseState]?.[role];
 
-  // Use the image as a background, with cover and center, and a dark overlay for readability
-  const bgImage = listingNFT.image.startsWith('ipfs://')
-    ? listingNFT.image.replace('ipfs://', 'https://ipfs.io/ipfs/')
-    : listingNFT.image;
+  const handleAction = () => {
+    if (action?.enabled && action.nextState !== undefined && onClick) {
+      onClick();
+    }
+    // You can also trigger your backend/contract logic here if needed
+  };
+
+  const bgImage = purchasedNFT.nft.image.startsWith('ipfs://')
+    ? purchasedNFT.nft.image.replace('ipfs://', 'https://ipfs.io/ipfs/')
+    : purchasedNFT.nft.image;
 
   return (
     <div
@@ -80,11 +125,11 @@ const MarketPlaceNFTCardView: React.FC<MarketPlaceNFTCardViewProps> = ({ listing
       <div className="absolute inset-0  align-bottom backdrop-blur-lg bg-black/10 rounded-2xl z-0"></div>
       {/* Content */}
       <div className="relative z-10 w-full flex flex-col align-bottom items-start space-y-1">
-        <NFTTitle name={listingNFT.name} />
-        <NFTDescription description={listingNFT.description} />
+        <NFTTitle name={purchasedNFT.nft.name} />
+        <NFTDescription description={purchasedNFT.nft.description} />
         <NFTIpfsAddress
           ipfs_address={
-            listingNFT.attributes.find((attr) => attr.trait_type === 'ipfs_address')
+            purchasedNFT.nft.attributes.find((attr) => attr.trait_type === 'ipfs_address')
               ?.value as string
           }
         />
@@ -92,13 +137,24 @@ const MarketPlaceNFTCardView: React.FC<MarketPlaceNFTCardViewProps> = ({ listing
       <div className="relative z-10 w-full flex flex-col items-end space-y-1">
         <NFTPrice
           price_in_usd={
-            listingNFT.attributes.find((attr) => attr.trait_type === 'price_in_usd')
+            purchasedNFT.nft.attributes.find((attr) => attr.trait_type === 'price_in_usd')
               ?.value as number
           }
         />
       </div>
+      {/* Purchase Action Button */}
+      {action && (
+        <div className="relative z-10 w-full flex flex-col items-center">
+          <PurchaseActionButton
+            label={action.label}
+            enabled={action.enabled}
+            description={action.description}
+            onClick={handleAction}
+          />
+        </div>
+      )}
     </div>
   );
 };
 
-export default MarketPlaceNFTCardView;
+export default PortfolioNFTPurchasedCardView;
