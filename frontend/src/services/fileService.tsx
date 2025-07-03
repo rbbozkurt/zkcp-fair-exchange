@@ -35,7 +35,10 @@ export async function uploadFileToPinata(file: File): Promise<string> {
   return res.data.IpfsHash;
 }
 
-export async function encryptAndUpload(data: UploadedDocument): Promise<EncryptedFileResponse> {
+export async function encryptAndUpload(
+  data: UploadedDocument,
+  owner: string
+): Promise<EncryptedFileResponse> {
   try {
     // Encrypt the file
     const encryptedFile = await encryptFileWithSecret(data.file, data.secret);
@@ -43,10 +46,8 @@ export async function encryptAndUpload(data: UploadedDocument): Promise<Encrypte
     // Upload the encrypted file to IPFS
     const ipfsHash = await uploadFileToPinata(encryptedFile);
     const imageIpfsHash = data.image ? await uploadFileToPinata(data.image) : null;
-
-    // Return the IPFS address of the uploaded file in ListingNFT (EncryptedFileResponse) format
-    return {
-      owner: '', // Owner should be set by the caller or after minting
+    const toBeMintedNFT = {
+      owner: owner, // Owner should be set by the caller or after minting
       name: data.name,
       description: data.description,
       image: imageIpfsHash || '',
@@ -55,6 +56,22 @@ export async function encryptAndUpload(data: UploadedDocument): Promise<Encrypte
         { trait_type: 'file_type', value: data.type },
         { trait_type: 'price_in_usd', value: data.price_in_usd },
         { trait_type: 'category', value: data.category },
+      ],
+    };
+    //upload toBeMintedNFT to IPFS
+    const uploadedNFTHash = await uploadFileToPinata(
+      new File([JSON.stringify(toBeMintedNFT)], 'metadata.json', { type: 'application/json' })
+    );
+
+    // Return the IPFS address of the uploaded file in ListingNFT (EncryptedFileResponse) format
+    return {
+      owner: owner, // Owner should be set by the caller or after minting
+      name: data.name,
+      description: data.description,
+      image: imageIpfsHash || '',
+      attributes: [
+        { trait_type: 'price_in_usd', value: data.price_in_usd },
+        { trait_type: 'ipfs_address', value: uploadedNFTHash },
       ],
     };
   } catch (error) {

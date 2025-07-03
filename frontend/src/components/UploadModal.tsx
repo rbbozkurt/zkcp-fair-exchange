@@ -1,9 +1,13 @@
 import React, { useState, useRef } from 'react';
+import type { UploadedDocument } from '../types/nftTypes';
 
 interface UploadModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: any, done: (success: boolean, errorMsg?: string) => void) => void;
+  onSubmit: (
+    uploadedDocument: UploadedDocument,
+    done: (success: boolean, errorMsg?: string) => void
+  ) => void;
 }
 
 const State = {
@@ -92,7 +96,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
         name,
         description,
         price_in_usd: Number(price),
-        file_type: fileType,
+        type: fileType, // <-- change here
         category,
         secret,
         file: mainFile,

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useWalletAccount } from '../hooks/useWalletAccount';
 import { UploadModal } from '../components/UploadModal';
 import { encryptAndUpload } from '../services/fileService';
+import type { UploadedDocument } from '../types/nftTypes';
+
 import {
   type ListingNFTPreview,
   type PurchasedListingNFT,
@@ -58,29 +60,25 @@ export function Portfolio() {
   };
 
   const handleUpload = (
-    data: {
-      name: string;
-      description: string;
-      price_in_usd: number;
-      file_type: string;
-      category: string;
-      secret: string;
-      file: File;
-      image?: File | null;
-    },
+    uploadedDocument: UploadedDocument,
     done: (success: boolean, errorMsg?: string) => void
   ) => {
-    encryptAndUpload(data)
+    if (!address) {
+      done(false, 'Wallet address is not available.');
+      return;
+    }
+    encryptAndUpload(uploadedDocument, address)
       .then((response) => {
         console.log('File uploaded successfully:', response);
+
+        // call smart contract to mint NFT
         done(true);
       })
       .catch((error) => {
         console.error('Error uploading file:', error);
         done(false, error.message);
       });
-    console.log('Uploaded NFT:', data);
-    done(true);
+    console.log('Uploaded NFT:', uploadedDocument);
   };
 
   const navigate = useNavigate();
