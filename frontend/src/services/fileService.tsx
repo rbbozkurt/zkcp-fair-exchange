@@ -1,8 +1,8 @@
-import { PinataSDK } from 'pinata';
+import axios from 'axios';
 
 // Utility: Encrypt a file with a secret using AES-GCM (Web Crypto API)
 const VITE_PINATA_API_KEY = import.meta.env.VITE_PINATA_API_KEY;
-const VITE_PINATA_GATEWAY_URL = import.meta.env.VITE_PINATA_GATEWAY_URL;
+const VITE_PINATA_SECRET_API_KEY = import.meta.env.VITE_PINATA_SECRET_API_KEY;
 
 /*
 
@@ -30,24 +30,22 @@ interface EncryptedFileResponse {
   }[];
 }
 
-const pinata = new PinataSDK({
-  pinataJwt: VITE_PINATA_API_KEY!,
-  pinataGateway: VITE_PINATA_GATEWAY_URL,
-});
+// Remove PinataSDK usage and use axios + FormData for browser upload
+export async function uploadFileToPinata(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
 
-const uploadFileToPinata = async (file: File): Promise<string> => {
-  try {
-    const response = await pinata.upload.file(file);
-    if (response.cid) {
-      return `ipfs://${response.cid}`;
-    } else {
-      throw new Error('File upload failed, no IPFS hash returned');
-    }
-  } catch (error) {
-    console.error('Error uploading file to Pinata:', error);
-    throw new Error('Failed to upload file to IPFS');
-  }
-};
+  const res = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', formData, {
+    maxContentLength: Infinity,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      pinata_api_key: VITE_PINATA_API_KEY,
+      pinata_secret_api_key: VITE_PINATA_SECRET_API_KEY,
+    },
+  });
+
+  return res.data.IpfsHash;
+}
 
 export async function encryptAndUpload(data: {
   name: string;
@@ -64,17 +62,17 @@ export async function encryptAndUpload(data: {
     const encryptedFile = await encryptFileWithSecret(data.file, data.secret);
 
     // Upload the encrypted file to IPFS
-    const ipfsAddress = await uploadFileToPinata(encryptedFile);
-    const imageIpfsAddress = data.image ? await uploadFileToPinata(data.image) : null;
+    const ipfsHash = await uploadFileToPinata(encryptedFile);
+    const imageIpfsHash = data.image ? await uploadFileToPinata(data.image) : null;
 
     // Return the IPFS address of the uploaded file
     return {
       name: data.name,
       description: data.description,
-      image: imageIpfsAddress,
+      image: imageIpfsHash,
       attributes: [
         {
-          file_enc: ipfsAddress,
+          file_enc: ipfsHash,
           file_type: data.file_type,
           price_in_usd: data.price_in_usd,
           category: data.category,
@@ -112,3 +110,5 @@ export async function encryptFileWithSecret(file: File, secret: string): Promise
   // Return as a File object (with .enc extension)
   return new File([result], `${file.name}.enc`, { type: 'application/octet-stream' });
 }
+
+// Trivial change: This comment was added to test git commit functionality.
