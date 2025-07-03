@@ -1,5 +1,5 @@
 import axios from 'axios';
-
+import type { UploadedDocument, EncryptedFileResponse } from '../types/nftTypes';
 // Utility: Encrypt a file with a secret using AES-GCM (Web Crypto API)
 const VITE_PINATA_API_KEY = import.meta.env.VITE_PINATA_API_KEY;
 const VITE_PINATA_SECRET_API_KEY = import.meta.env.VITE_PINATA_SECRET_API_KEY;
@@ -18,18 +18,6 @@ interface NFTAttrs {
 }
     */
 
-interface EncryptedFileResponse {
-  name: string;
-  description: string;
-  image?: string | null;
-  attributes: {
-    file_enc: string; // IPFS address of the encrypted file
-    file_type: string; // e.g., '.pdf', '.jpg'
-    price_in_usd: number; // Price in USD
-    category: string; // Category of the file
-  }[];
-}
-
 // Remove PinataSDK usage and use axios + FormData for browser upload
 export async function uploadFileToPinata(file: File): Promise<string> {
   const formData = new FormData();
@@ -47,16 +35,7 @@ export async function uploadFileToPinata(file: File): Promise<string> {
   return res.data.IpfsHash;
 }
 
-export async function encryptAndUpload(data: {
-  name: string;
-  description: string;
-  price_in_usd: number;
-  file_type: string;
-  category: string;
-  secret: string;
-  file: File;
-  image?: File | null;
-}): Promise<EncryptedFileResponse> {
+export async function encryptAndUpload(data: UploadedDocument): Promise<EncryptedFileResponse> {
   try {
     // Encrypt the file
     const encryptedFile = await encryptFileWithSecret(data.file, data.secret);
@@ -65,18 +44,17 @@ export async function encryptAndUpload(data: {
     const ipfsHash = await uploadFileToPinata(encryptedFile);
     const imageIpfsHash = data.image ? await uploadFileToPinata(data.image) : null;
 
-    // Return the IPFS address of the uploaded file
+    // Return the IPFS address of the uploaded file in ListingNFT (EncryptedFileResponse) format
     return {
+      owner: '', // Owner should be set by the caller or after minting
       name: data.name,
       description: data.description,
-      image: imageIpfsHash,
+      image: imageIpfsHash || '',
       attributes: [
-        {
-          file_enc: ipfsHash,
-          file_type: data.file_type,
-          price_in_usd: data.price_in_usd,
-          category: data.category,
-        },
+        { trait_type: 'file_enc', value: ipfsHash },
+        { trait_type: 'file_type', value: data.type },
+        { trait_type: 'price_in_usd', value: data.price_in_usd },
+        { trait_type: 'category', value: data.category },
       ],
     };
   } catch (error) {
