@@ -134,10 +134,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <form
         onSubmit={handleSubmit}
-        className="bg-gray-900 rounded-2xl p-8 max-w-lg w-full shadow-2xl border border-pink-500/40 relative"
+        className="bg-black/20 backdrop-blur-lg rounded-2xl p-8 max-w-lg w-full shadow-2xl border-2 border-white relative"
       >
         <button
-          className="absolute top-4 right-4 text-gray-400 hover:text-pink-400 text-2xl font-bold"
+          className="absolute top-4 right-4 flex items-center justify-center w-12 h-12 bg-black/30 backdrop-blur-lg border-2 border-white rounded-20 text-white hover:text-black hover:bg-white text-3xl font-bold transition-all"
           onClick={isSubmitting ? undefined : onClose}
           type="button"
           aria-label="Close"
@@ -145,10 +145,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
         >
           &times;
         </button>
-        <h3 className="text-2xl font-bold mb-6 text-pink-400">Upload Document</h3>
+        <h3 className="text-2xl font-bold mb-6 text-white">Upload Document</h3>
         <div className="flex flex-col gap-4">
           <input
-            className="bg-gray-800 text-white rounded px-4 py-2"
+            className="bg-black/20 backdrop-blur-lg text-white border-2 border-white rounded px-4 py-2 placeholder-white"
             placeholder="NFT Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -156,11 +156,11 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
             maxLength={64}
             disabled={!isEditing}
           />
-          <div className="flex justify-between text-xs text-gray-500 px-1">
+          <div className="flex justify-between text-xs text-white px-1">
             <span>{name.length}/64</span>
           </div>
           <textarea
-            className="bg-gray-800 text-white rounded px-4 py-2"
+            className="bg-black/20 backdrop-blur-lg text-white border-2 border-white rounded px-4 py-2 placeholder-white"
             placeholder="Description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -169,12 +169,12 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
             rows={3}
             disabled={!isEditing}
           />
-          <div className="flex justify-between text-xs text-gray-500 px-1">
+          <div className="flex justify-between text-xs text-white px-1">
             <span>{description.length}/512</span>
           </div>
           {/* Drag & drop or upload image (optional) */}
           <div
-            className={`bg-gray-800 rounded px-4 py-4 flex flex-col items-center border-2 border-dashed border-gray-600 cursor-pointer hover:border-pink-400 transition ${!isEditing ? 'opacity-60 pointer-events-none' : ''}`}
+            className={`bg-black/20 backdrop-blur-lg rounded px-4 py-4 flex flex-col items-center border-2 border-dashed border-white cursor-pointer hover:border-pink-400 transition ${!isEditing ? 'opacity-60 pointer-events-none' : ''}`}
             onDrop={isEditing ? handleImageDrop : undefined}
             onDragOver={isEditing ? (e) => e.preventDefault() : undefined}
             onClick={isEditing ? () => imageInputRef.current?.click() : undefined}
@@ -194,13 +194,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
                 className="w-24 h-24 object-cover rounded mb-2"
               />
             ) : (
-              <span className="text-gray-400">Drag & drop or click to upload image (optional)</span>
+              <span className="text-white">Drag & drop or click to upload image (optional)</span>
             )}
-            {imageFile && <span className="text-xs text-gray-400">{imageFile.name}</span>}
+            {imageFile && <span className="text-xs text-white">{imageFile.name}</span>}
           </div>
           {/* Drag & drop or upload main file (mandatory) */}
           <div
-            className={`bg-gray-800 rounded px-4 py-6 flex flex-col items-center border-2 border-dashed border-pink-500 cursor-pointer hover:border-pink-400 transition ${!isEditing ? 'opacity-60 pointer-events-none' : ''}`}
+            className={`bg-black/20 backdrop-blur-lg rounded px-4 py-6 flex flex-col items-center border-2 border-dashed border-pink-500 cursor-pointer hover:border-pink-400 transition ${!isEditing ? 'opacity-60 pointer-events-none' : ''}`}
             onDrop={isEditing ? handleFileDrop : undefined}
             onDragOver={isEditing ? (e) => e.preventDefault() : undefined}
             onClick={isEditing ? () => fileInputRef.current?.click() : undefined}
@@ -216,11 +216,11 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
             {mainFile ? (
               <span className="text-pink-400 font-semibold">{mainFileName}</span>
             ) : (
-              <span className="text-gray-400">Drag & drop or click to upload file (required)</span>
+              <span className="text-white">Drag & drop or click to upload file (required)</span>
             )}
           </div>
           <input
-            className="bg-gray-800 text-white rounded px-4 py-2"
+            className="bg-black/20 backdrop-blur-lg text-white border-2 border-white rounded px-4 py-2 placeholder-white"
             placeholder="Price in USD"
             type="number"
             min="0"
@@ -230,7 +230,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
             disabled={!isEditing}
           />
           <input
-            className="bg-gray-800 text-white rounded px-4 py-2"
+            className="bg-black/20 backdrop-blur-lg text-white border-2 border-white rounded px-4 py-2 placeholder-white"
             placeholder="File Type (e.g. .jpg, .pdf)"
             value={fileType}
             onChange={(e) => setFileType(e.target.value)}
@@ -238,7 +238,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
             disabled={!isEditing}
           />
           <input
-            className="bg-gray-800 text-white rounded px-4 py-2"
+            className="bg-black/20 backdrop-blur-lg text-white border-2 border-white rounded px-4 py-2 placeholder-white"
             placeholder="Category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -248,7 +248,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
           {/* Secret input with visibility toggle and auto-generate */}
           <div className="relative flex items-center">
             <input
-              className="bg-gray-800 text-white rounded px-4 py-2 pr-28 w-full"
+              className="bg-black/20 backdrop-blur-lg text-white border-2 border-white rounded px-4 py-2 pr-24 w-full placeholder-white"
               placeholder="Secret (used for encryption)"
               type={showSecret ? 'text' : 'password'}
               value={secret}
@@ -257,75 +257,91 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
               maxLength={64}
               disabled={!isEditing}
             />
+            {/* Eye on/off button */}
             <button
               type="button"
-              className="absolute right-20 top-1/2 -translate-y-1/2 text-gray-400 hover:text-pink-400"
+              className="absolute right-12 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/10 text-zinc-300 hover:bg-transparent hover:text-white transition border-0 focus:outline-none"
               onClick={() => setShowSecret((v) => !v)}
               tabIndex={-1}
               disabled={!isEditing}
+              aria-label={showSecret ? 'Hide secret' : 'Show secret'}
             >
               {showSecret ? (
+                // Eye-off icon (SVG, white)
                 <svg
+                  className="w-6 h-6"
+                  aria-hidden="true"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
-                  stroke="currentColor"
                 >
                   <path
+                    stroke="currentColor"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    strokeWidth="2"
+                    d="M3.933 13.909A4.357 4.357 0 0 1 3 12c0-1 4-6 9-6m7.6 3.8A5.068 5.068 0 0 1 21 12c0 1-3 6-9 6-.314 0-.62-.014-.918-.04M5 19 19 5m-4 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
                   />
                 </svg>
               ) : (
+                // Eye icon (SVG, white)
                 <svg
+                  className="w-6 h-6"
+                  aria-hidden="true"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
-                  stroke="currentColor"
                 >
                   <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.956 9.956 0 012.293-3.95m3.25-2.6A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.973 9.973 0 01-4.043 5.197M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"
                   />
                   <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 3l18 18"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
                   />
                 </svg>
               )}
             </button>
+            {/* Copy to clipboard button */}
             <button
               type="button"
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-xs bg-pink-500 hover:bg-pink-600 text-white rounded-full px-3 py-1 font-bold transition-all ml-2"
-              onClick={() => setSecret(generateRandomSecret(32))}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/10 text-zinc-300 hover:bg-transparent hover:text-white transition border-0 focus:outline-none"
+              onClick={() => {
+                navigator.clipboard.writeText(secret);
+                alert('Secret copied to clipboard!');
+              }}
               tabIndex={-1}
-              disabled={!isEditing}
+              disabled={!isEditing || !secret}
+              aria-label="Copy secret"
             >
-              Generate
+              {/* Clipboard icon (SVG, white) */}
+              <svg
+                className="w-6 h-6"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke="currentColor"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 8v3a1 1 0 0 1-1 1H5m11 4h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-7a1 1 0 0 0-1 1v1m4 3v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7.13a1 1 0 0 1 .24-.65L7.7 8.35A1 1 0 0 1 8.46 8H13a1 1 0 0 1 1 1Z"
+                />
+              </svg>
             </button>
           </div>
-          <div className="flex justify-between text-xs text-gray-500 px-1">
+          <div className="flex justify-between text-xs text-white px-1">
             <span>{secret.length}/64</span>
           </div>
         </div>
         <div className="flex justify-end gap-4 mt-8">
           <button
             type="button"
-            className="h-12 px-6 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-full shadow transition-all text-lg"
+            className="h-12 px-8 bg-black text-white border border-white rounded-full font-bold shadow transition-all text-lg hover:bg-white hover:text-black hover:border-black"
             onClick={() => setSecret(generateRandomSecret(32))}
             disabled={!isEditing}
           >

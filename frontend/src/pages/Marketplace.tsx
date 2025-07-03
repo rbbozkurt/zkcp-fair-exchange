@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MarketPlaceNFTCardView from '../components/MarketPlaceNFTCardView';
 import { useNavigate } from 'react-router-dom';
-import { fetchListingNFTs } from '../services/listingNftService';
+import { fetchListingNFTPreviews } from '../services/listingNftService';
 import type { ListingNFTPreview } from '../types/nftTypes';
 
 export function Marketplace() {
@@ -10,7 +10,7 @@ export function Marketplace() {
   // Simulate fetching NFTs from a service
   useEffect(() => {
     const fetchNFTs = async () => {
-      const nfts = await fetchListingNFTs();
+      const nfts = await fetchListingNFTPreviews();
       setMockListingNFTList(nfts);
     };
 
@@ -32,32 +32,33 @@ export function Marketplace() {
     });
   };
 
+  // ...existing code...
   return (
-    <div className="bg-black text-white min-h-screen flex flex-col items-center pt-24 px-4">
-      <div className="w-full max-w-5xl text-center space-y-8">
+    <div className="bg-transparent text-white min-h-screen flex flex-col items-center pt-24 px-4">
+      <div className="sticky w-full max-w-5xl text-center space-y-8">
         {/* Sticky header: title, subtitle, and search bar together */}
-        <div className="sticky top-0 z-40 bg-black/60 backdrop-blur-lg border-b border-black/20">
-          <div className="pt-6 pb-2">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight mb-2">
+        <div className=" top-0 z-40 bg-transparent border-b border-black/20">
+          <div className="pt-6 pb-2 sticky">
+            <h1 className="sticky text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight mb-2 sticky top-0 bg-transparent z-50">
               Marketplace
             </h1>
-            <p className="text-xl md:text-2xl text-gray-300 mb-4">
+            <p className="sticky text-xl md:text-2xl text-gray-300 mb-4">
               Browse and discover zkDrop NFTs.
             </p>
-            <div className="flex justify-center w-full">
-              <div className="w-full max-w-5xl px-4">
-                <div className="backdrop-blur-lg bg-black text-white border border-white rounded-full h-12 flex items-center shadow-md">
-                  <input
-                    type="text"
-                    placeholder="Search NFTs..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full h-12 px-8 bg-transparent text-white text-lg rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400 placeholder-gray-300"
-                    style={{
-                      textShadow: '0 1px 2px rgba(0,0,0,0.4)',
-                    }}
-                  />
-                </div>
+          </div>
+          <div className="flex justify-center w-full top-[6.5rem] z-40 transparent border-b border-black/20">
+            <div className="w-full max-w-5xl px-4">
+              <div className="backdrop-blur-lg bg-black/10 text-white border border-white rounded-full h-12 flex items-center shadow-md">
+                <input
+                  type="text"
+                  placeholder="Search NFTs..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full h-12 px-8 bg-transparent text-white text-lg rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400 placeholder-gray-300"
+                  style={{
+                    textShadow: '0 1px 2px rgba(0,0,0,0.4)',
+                  }}
+                />
               </div>
             </div>
           </div>

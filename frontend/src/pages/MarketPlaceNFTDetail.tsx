@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWalletAccount } from '../hooks/useWalletAccount';
-import { fetchMintNFT } from '../services/listingNftService';
+import { fetchListingNFTDetailsByIPFSAddress } from '../services/listingNftService';
 import type { ListingNFT, ListingNFTAttribute } from '../types/nftTypes';
 
 interface MarketPlaceNFTDetailCardViewProps {
@@ -108,13 +108,12 @@ const MarketPlaceNFTDetailCardView: React.FC<MarketPlaceNFTDetailCardViewProps> 
               <button
                 className={`
                   w-full py-3 rounded-full font-bold text-lg transition-all duration-200
-                  border-2 border-white
-                  bg-black/20 backdrop-blur-lg
-                  text-white
-                  hover:border-2
-                  hover:border-pink-500
-                  hover:shadow-pink-500/40
-                  cursor-pointer
+                  border border-white
+                  ${
+                    isConnected
+                      ? 'bg-black text-white shadow hover:bg-white hover:text-black hover:border-black cursor-pointer'
+                      : 'bg-gray-800 text-gray-400 border-gray-400 cursor-not-allowed opacity-60'
+                  }
                 `}
                 onClick={onBuy}
                 disabled={!isConnected}
@@ -157,7 +156,9 @@ export function MarketPlaceNFTDetail() {
   useEffect(() => {
     const fetchNFT = async () => {
       if (ipfs_address) {
-        const fetchedNFT = await fetchMintNFT(decodeURIComponent(ipfs_address));
+        const fetchedNFT = await fetchListingNFTDetailsByIPFSAddress(
+          decodeURIComponent(ipfs_address)
+        );
         setNft(fetchedNFT);
       }
     };

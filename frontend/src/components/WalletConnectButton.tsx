@@ -24,7 +24,11 @@ const WalletConnectButton: React.FC = () => {
             {!connected ? (
               <button
                 onClick={openConnectModal}
-                className="h-16 flex items-center border border-white gap-2 px-6 rounded-full bg-black/30 text-white font-medium shadow-md hover:shadow-lg hover:scale-105 hover:text-pink-400 transition-all duration-200"
+                className={`
+      h-16 flex items-center border border-white gap-2 px-6 rounded-full bg-black/30 text-white font-medium shadow-md
+      hover:bg-white hover:text-black hover:border-black
+      hover:shadow-lg hover:scale-105 transition-all duration-200
+    `}
               >
                 <Wallet className="w-5 h-5" />
                 {t('topbar.connect_wallet')}
