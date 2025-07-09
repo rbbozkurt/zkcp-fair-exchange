@@ -246,7 +246,9 @@ export class SmartContractService {
   private async fetchNFTMetadata(metadataURI: string): Promise<Partial<ListingNFTPreview> | null> {
     try {
       // Convert IPFS URI to HTTP URL
-      const ipfsUrl = metadataURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+      //const ipfsUrl = metadataURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+
+      const ipfsUrl = metadataURI.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
 
       const response = await fetch(ipfsUrl);
       if (!response.ok) {
@@ -274,7 +276,8 @@ export class SmartContractService {
   ): Promise<Partial<ListingNFTPreview> | null> {
     try {
       // Convert IPFS URI to HTTP URL
-      const ipfsUrl = metadataURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+      //const ipfsUrl = metadataURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+      const ipfsUrl = metadataURI.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
 
       // Create a timeout promise
       const timeoutPromise = new Promise<never>((_, reject) => {

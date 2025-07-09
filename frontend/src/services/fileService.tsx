@@ -83,6 +83,11 @@ export async function encryptAndUpload(
 export async function encryptFileWithSecret(file: File, secret: string): Promise<File> {
   const fileBuffer = await file.arrayBuffer();
   const enc = new TextEncoder();
+
+  // debug, remove later
+  const slicedSecret = secret.padEnd(32, '0').slice(0, 32);
+  const encodedSecret = enc.encode(slicedSecret);
+
   const keyMaterial = await window.crypto.subtle.importKey(
     'raw',
     enc.encode(secret.padEnd(32, '0').slice(0, 32)), // 256-bit key
@@ -102,8 +107,49 @@ export async function encryptFileWithSecret(file: File, secret: string): Promise
   result.set(iv, 0);
   result.set(encryptedBytes, iv.length);
 
+  // debug: log the data inputs and the generated variables
+  console.log('File encryption completed:', {
+    fileName: file.name,
+    fileSize: file.size,
+    secretLength: secret.length,
+    slicedSecret: slicedSecret,
+    encodedSecret: encodedSecret,
+    ivLength: iv.length,
+    iv: iv,
+    encryptedDataLength: result.length,
+  });
+
   // Return as a File object (with .enc extension)
   return new File([result], `${file.name}.enc`, { type: 'application/octet-stream' });
 }
 
-// Trivial change: This comment was added to test git commit functionality.
+export async function decryptFileWithSecret(file: File, secret: string): Promise<File> {
+  const fileBuffer = await file.arrayBuffer();
+  const data = new Uint8Array(fileBuffer);
+
+  const iv = data.slice(0, 12);
+  const ciphertext = data.slice(12);
+
+  const slicedSecret = secret.padEnd(32, '0').slice(0, 32);
+  const encodedSecret = new TextEncoder().encode(slicedSecret);
+
+  const keyMaterial = await window.crypto.subtle.importKey('raw', encodedSecret, 'AES-GCM', false, [
+    'decrypt',
+  ]);
+
+  try {
+    const decryptedBuffer = await window.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      keyMaterial,
+      ciphertext
+    );
+
+    // Return as a File object (with .dec extension)
+    return new File([decryptedBuffer], file.name.replace(/\.enc$/, '.dec'), {
+      type: 'application/octet-stream',
+    });
+  } catch (error) {
+    console.error('Decryption failed:', error);
+    throw new Error('Invalid secret or corrupted file');
+  }
+}

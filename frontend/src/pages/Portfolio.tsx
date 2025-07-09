@@ -257,6 +257,25 @@ export function Portfolio() {
     }
   };
 
+  const [encFile, setEncFile] = useState<File | null>(null);
+  const [secretKey, setSecretKey] = useState('');
+  const [decryptedUrl, setDecryptedUrl] = useState<string | null>(null);
+
+  const handleDecryptFile = async () => {
+    if (!encFile || !secretKey) {
+      alert('Please select a file and enter a secret.');
+      return;
+    }
+    try {
+      const { decryptFileWithSecret } = await import('../services/fileService');
+      const decryptedFile = await decryptFileWithSecret(encFile, secretKey);
+      const url = URL.createObjectURL(decryptedFile);
+      setDecryptedUrl(url);
+    } catch (error) {
+      alert('Decryption failed: ' + (error as any).message);
+    }
+  };
+
   return (
     <div className="bg-black text-white min-h-screen flex flex-col items-center justify-center pt-24 px-4">
       <div className="w-full max-w-5xl mx-auto space-y-8">
@@ -410,6 +429,41 @@ export function Portfolio() {
           </div>
         )}
       </div>
+      {import.meta.env.DEV && (
+        <div className="w-full max-w-5xl mt-8 bg-gray-800 p-4 rounded text-white">
+          <h2 className="text-lg font-bold mb-2">🔐 Developer: Decrypt Encrypted File</h2>
+          <div className="flex flex-col gap-2">
+            <input
+              type="file"
+              accept=".enc"
+              onChange={(e) => setEncFile(e.target.files?.[0] || null)}
+              className="text-white"
+            />
+            <input
+              type="text"
+              placeholder="Enter secret key"
+              value={secretKey}
+              onChange={(e) => setSecretKey(e.target.value)}
+              className="bg-gray-700 text-white p-2 rounded"
+            />
+            <button
+              onClick={handleDecryptFile}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+            >
+              Decrypt File
+            </button>
+            {decryptedUrl && (
+              <a
+                href={decryptedUrl}
+                download="decrypted_file"
+                className="text-green-400 underline mt-2"
+              >
+                Download Decrypted File
+              </a>
+            )}
+          </div>
+        </div>
+      )}
       <UploadModal open={showModal} onClose={() => setShowModal(false)} onSubmit={handleUpload} />
     </div>
   );
