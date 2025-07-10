@@ -396,11 +396,22 @@ export function Portfolio() {
       // 5. Decrypt the file
       const decryptedFile = await decryptFileWithSecret(file, decryptedSecret);
 
-      // 6. Download the decrypted file
+      // 6. Determine file extension from NFT type attribute
+      let fileType =
+        nft.nft.attributes.find((a) => a.trait_type === 'type')?.value ||
+        nft.nft.attributes.find((a) => a.trait_type === 'file_type')?.value;
+      if (typeof fileType !== 'string' || !fileType.trim()) {
+        fileType = 'bin'; // fallback if type is missing or empty
+      }
+      // Clean up fileType to avoid invalid extensions
+      fileType = fileType.replace(/[^a-zA-Z0-9]/g, '');
+      const fileName = `decrypted_file.${fileType}`;
+
+      // 7. Download the decrypted file
       const url = URL.createObjectURL(decryptedFile);
       const a = document.createElement('a');
       a.href = url;
-      a.download = decryptedFile.name;
+      a.download = fileName;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
