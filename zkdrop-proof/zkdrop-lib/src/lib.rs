@@ -3,7 +3,6 @@
 extern crate alloc;
 
 use alloc::string::String;
-use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 /// Inputs for AES-CTR decryption proof
@@ -21,3 +20,29 @@ pub struct AesCtrDecryptionProofInput {
     /// Ciphertext as hex-encoded string
     pub ciphertext_hex: String,
 }
+
+/// Inputs for verifying RSA encryption of AES key
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RsaEncryptedAesKeyInput {
+    /// AES-256 key, hex-encoded (64 hex chars → 32 bytes)
+    pub aes_key_hex: String,
+
+    /// RSA public key (base64-encoded DER, 294 bytes for 2048-bit key)
+    pub rsa_pubkey_base64: String,
+
+    /// AES key encrypted with RSA public key (hex-encoded)
+    pub enc_aes_key_hex: String,
+}
+
+
+/// Inputs for verifying RSA encryption of AES key
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RsaEncryptAesKeyInput {
+    /// AES-256 key, hex-encoded (64 hex chars → 32 bytes)
+    pub aes_key_hex: String,
+
+    /// RSA public key (base64-encoded DER, 294 bytes for 2048-bit key)
+    pub rsa_pubkey_base64: String,
+
+}
+

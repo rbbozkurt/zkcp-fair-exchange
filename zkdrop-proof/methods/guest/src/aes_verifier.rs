@@ -1,8 +1,7 @@
 
-use risc0_zkvm::guest::env;
 use aes::Aes256;
 use ctr::cipher::{KeyIvInit, StreamCipher}; // AES-CTR trait
-use hex::{decode, encode};
+use hex::{decode};
 
 type Aes256Ctr = ctr::Ctr128BE<Aes256>; // uses 128-bit (16-byte) IV, which you're already using
 use zkdrop_lib::AesCtrDecryptionProofInput;
