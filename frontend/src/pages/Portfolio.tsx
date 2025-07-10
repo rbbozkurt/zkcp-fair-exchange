@@ -19,6 +19,7 @@ import {
 } from '../types/nftTypes';
 import MarketPlaceNFTCardView from '../components/MarketplaceNFTCardView';
 import PortfolioNFTPurchasedCardView from '../components/PortfolioNFTPurchasedCardView';
+import Carousel from '../components/Carousel'; // Import the new carousel component
 import {
   fetchListingNFTPreviewsByOwner,
   fetchPurchasedListingNFTPreviewsByProposer,
@@ -36,6 +37,7 @@ export function Portfolio() {
   const [marketplaceListingNFTs, setMarketplaceListingNFTs] = useState<ListingNFTPreview[]>([]);
   const [proposedByMe, setProposedByMe] = useState<PurchasedListingNFT[]>([]);
   const [proposedToMe, setProposedToMe] = useState<PurchasedListingNFT[]>([]);
+  const [mintedNFTs, setMintedNFTs] = useState<PurchasedListingNFT[]>([]);
 
   // Initialize smart contract service when wallet connects
   useEffect(() => {
@@ -65,6 +67,7 @@ export function Portfolio() {
         setMarketplaceListingNFTs([]);
         setProposedByMe([]);
         setProposedToMe([]);
+        setMintedNFTs([]);
         return;
       }
 
@@ -96,7 +99,15 @@ export function Portfolio() {
             return nft;
           })
         );
-        setProposedByMe(proposedByMeNFTs);
+
+        // Separate NFTs: those with secrets delivered go to "minted", others stay in "proposed by me"
+        const mintedNFTs = proposedByMeNFTs.filter((nft) => !!nft.purchaseData?.encryptedSecret);
+        const stillProposedByMe = proposedByMeNFTs.filter(
+          (nft) => !nft.purchaseData?.encryptedSecret
+        );
+
+        setProposedByMe(stillProposedByMe);
+        setMintedNFTs(mintedNFTs);
 
         // Fetch purchased NFTs (proposed to me)
         let proposedToMeNFTs = await fetchPurchasedListingNFTPreviewsByOwner(address);
@@ -313,6 +324,7 @@ export function Portfolio() {
       alert('Decryption failed: ' + (error as any).message);
     }
   };
+
   // Seller-side: Encrypt and deliver the secret
   const handleEncryptAndDeliver = async (nft: PurchasedListingNFT) => {
     try {
@@ -396,7 +408,7 @@ export function Portfolio() {
       // 5. Decrypt the file
       const decryptedFile = await decryptFileWithSecret(file, decryptedSecret);
 
-      // 6. Determine file extension from NFT type attribute
+      // 6. Determine file extension from NFT type attribute and create filename with NFT name
       let fileType =
         nft.nft.attributes.find((a) => a.trait_type === 'type')?.value ||
         nft.nft.attributes.find((a) => a.trait_type === 'file_type')?.value;
@@ -405,7 +417,10 @@ export function Portfolio() {
       }
       // Clean up fileType to avoid invalid extensions
       fileType = fileType.replace(/[^a-zA-Z0-9]/g, '');
-      const fileName = `decrypted_file.${fileType}`;
+
+      // Use NFT name for filename, sanitized for file system
+      const sanitizedNFTName = nft.nft.name.replace(/[^a-zA-Z0-9\s\-_]/g, '');
+      const fileName = `${sanitizedNFTName}.${fileType}`;
 
       // 7. Download the decrypted file
       const url = URL.createObjectURL(decryptedFile);
@@ -418,9 +433,10 @@ export function Portfolio() {
       alert('Error: ' + (err as any).message);
     }
   };
+
   return (
     <div className="bg-black text-white min-h-screen flex flex-col items-center justify-center pt-24 px-4">
-      <div className="w-full max-w-5xl mx-auto space-y-8">
+      <div className="w-full max-w-7xl mx-auto space-y-8">
         <div className="flex items-center pt-6 justify-between">
           <div>
             <h1 className="text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight mb-2 text-left">
@@ -481,7 +497,7 @@ export function Portfolio() {
           <div className="space-y-12">
             {/* On Marketplace */}
             <div>
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-4 mb-6">
                 <h2 className="text-4xl font-bold text-pink-400">On Marketplace</h2>
                 {isLoadingNFTs && (
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-400"></div>
@@ -499,55 +515,58 @@ export function Portfolio() {
                   )}
                 </div>
               ) : (
-                <div className="flex overflow-x-auto space-x-6 pb-2">
+                <Carousel>
                   {marketplaceListingNFTs.map((nft, idx) => (
-                    <div key={nft.tokenId || idx} className="min-w-[320px]">
-                      <MarketPlaceNFTCardView
-                        listingNFT={nft}
-                        onClick={() => handleMarketPlaceClick(nft)}
-                      />
-                    </div>
+                    <MarketPlaceNFTCardView
+                      key={nft.tokenId || idx}
+                      listingNFT={nft}
+                      onClick={() => handleMarketPlaceClick(nft)}
+                    />
                   ))}
-                </div>
+                </Carousel>
               )}
             </div>
 
             {/* Proposed to me */}
             <div>
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-4 mb-6">
                 <h2 className="text-4xl font-bold text-blue-400 text-left">Proposed to me</h2>
               </div>
               {proposedToMe.length === 0 ? (
                 <div className="text-gray-400 text-left">No proposals found.</div>
               ) : (
-                <div className="flex overflow-x-auto space-x-6 pb-2">
+                <Carousel>
                   {proposedToMe.map((nft, idx) => {
                     const role = address === nft.nft.owner ? 'owner' : 'proposer';
                     const secretDelivered = !!nft.purchaseData?.encryptedSecret;
                     return (
-                      <div key={idx} className="min-w-[320px]">
+                      <div key={idx} className="space-y-3">
                         <PortfolioNFTPurchasedCardView
                           purchasedNFT={nft}
                           role={role}
                           onClick={() => handlePurchasedNFTClicked(nft, role)}
                         />
                         {/* DEBUG: Show purchaseId and encryptedSecret */}
-                        <div className="text-xs text-gray-500 break-all">
+                        <div className="text-xs text-gray-500 break-all bg-gray-800/50 p-2 rounded">
                           <div>purchaseId: {String(nft.purchaseId)}</div>
                           <div>
-                            encryptedSecret: {nft.purchaseData?.encryptedSecret || '(none)'}
+                            encryptedSecret: {nft.purchaseData?.encryptedSecret ? 'Yes' : 'No'}
                           </div>
                         </div>
                         {role === 'owner' && nft.purchaseState === 1 && (
                           <>
                             <button
                               onClick={() => handleEncryptAndDeliver(nft)}
-                              className={`bg-blue-500 text-white px-4 py-2 rounded mt-2 ${secretDelivered ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              className={`w-full bg-blue-500 text-white px-4 py-2 rounded transition-colors ${
+                                secretDelivered
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : 'hover:bg-blue-600'
+                              }`}
                               disabled={secretDelivered}
                             >
                               Encrypt & Deliver Secret
                             </button>
-                            <div className="text-xs mt-1">
+                            <div className="text-xs text-center">
                               {secretDelivered ? (
                                 <span className="text-green-400">Secret delivered to buyer ✓</span>
                               ) : (
@@ -559,22 +578,22 @@ export function Portfolio() {
                       </div>
                     );
                   })}
-                </div>
+                </Carousel>
               )}
             </div>
 
             {/* Proposed by me */}
             <div>
-              <h2 className="text-4xl font-bold text-blue-400 mb-4 text-left">Proposed by me</h2>
+              <h2 className="text-4xl font-bold text-blue-400 mb-6 text-left">Proposed by me</h2>
               {proposedByMe.length === 0 ? (
                 <div className="text-gray-400 text-left">No proposals found.</div>
               ) : (
-                <div className="flex overflow-x-auto space-x-6 pb-2">
+                <Carousel>
                   {proposedByMe.map((nft, idx) => {
                     const role = address === nft.nft.owner ? 'owner' : 'proposer';
                     const secretDelivered = !!nft.purchaseData?.encryptedSecret;
                     return (
-                      <div key={idx} className="min-w-[320px]">
+                      <div key={idx} className="space-y-3">
                         <PortfolioNFTPurchasedCardView
                           purchasedNFT={nft}
                           role={role}
@@ -584,42 +603,69 @@ export function Portfolio() {
                           <>
                             <button
                               onClick={() => handleDecryptAndDownload(nft)}
-                              className="bg-green-500 text-white px-4 py-2 rounded mt-2"
+                              className="w-full bg-green-500 text-white px-4 py-2 rounded transition-colors hover:bg-green-600"
                             >
                               Decrypt Secret & Download File
                             </button>
-                            <div className="text-xs mt-1">
+                            <div className="text-xs text-center">
                               <span className="text-green-400">Secret delivered by seller ✓</span>
                             </div>
                           </>
                         )}
                         {role === 'proposer' && !secretDelivered && (
-                          <div className="text-xs mt-1 text-yellow-400">
+                          <div className="text-xs text-center text-yellow-400">
                             Waiting for seller to deliver secret
                           </div>
                         )}
                       </div>
                     );
                   })}
-                </div>
+                </Carousel>
               )}
             </div>
 
             {/* Minted */}
             <div>
-              <h2 className="text-4xl font-bold text-green-400 mb-4 text-left">Minted</h2>
-              <div className="text-gray-400 text-left">
-                No minted NFTs in your portfolio.
-                <div className="text-sm text-gray-500 mt-1">
-                  NFTs you purchase will appear here after completion.
+              <h2 className="text-4xl font-bold text-green-400 mb-6 text-left">Minted</h2>
+              {mintedNFTs.length === 0 ? (
+                <div className="text-gray-400 text-left">
+                  No minted NFTs in your portfolio.
+                  <div className="text-sm text-gray-500 mt-1">
+                    NFTs you purchase will appear here after the seller delivers the secret.
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <Carousel>
+                  {mintedNFTs.map((nft, idx) => {
+                    const role = address === nft.nft.owner ? 'owner' : 'proposer';
+                    return (
+                      <div key={idx} className="space-y-3">
+                        <PortfolioNFTPurchasedCardView
+                          purchasedNFT={nft}
+                          role={role}
+                          onClick={() => handlePurchasedNFTClicked(nft, role)}
+                        />
+                        {/* Download button for minted NFTs */}
+                        <button
+                          onClick={() => handleDecryptAndDownload(nft)}
+                          className="w-full bg-green-500 text-white px-4 py-2 rounded transition-colors hover:bg-green-600"
+                        >
+                          Decrypt & Download Dataset
+                        </button>
+                        <div className="text-xs text-center">
+                          <span className="text-green-400">✅ Ready to download</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </Carousel>
+              )}
             </div>
           </div>
         )}
       </div>
       {import.meta.env.DEV && (
-        <div className="w-full max-w-5xl mt-8 bg-gray-800 p-4 rounded text-white">
+        <div className="w-full max-w-7xl mt-8 bg-gray-800 p-4 rounded text-white">
           <h2 className="text-lg font-bold mb-2">🔐 Developer: Decrypt Encrypted File</h2>
           <div className="flex flex-col gap-2">
             <input

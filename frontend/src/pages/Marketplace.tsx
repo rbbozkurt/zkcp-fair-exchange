@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { fetchListingNFTPreviews } from '../services/listingNftService';
 import { smartContractService } from '../services/smartContractService';
 import type { ListingNFTPreview } from '../types/nftTypes';
-
 export function Marketplace() {
   const [search, setSearch] = useState('');
   const [mockListingNFTList, setMockListingNFTList] = useState<ListingNFTPreview[]>([]);
@@ -136,7 +135,7 @@ export function Marketplace() {
                       : 'bg-black text-white border-white hover:bg-white hover:text-black'
                   }`}
                 >
-                  {isLoading ? '🔄' : '↻'} Refresh
+                  {'↻'} Refresh
                 </button>
               </div>
             </div>

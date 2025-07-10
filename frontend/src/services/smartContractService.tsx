@@ -383,7 +383,6 @@ export class SmartContractService {
         listingTokenId,
         datasetInfo,
         buyerPublicKey, // Pass the public key to the contract
-        //encryptedSecret, // Pass the encrypted secret to the contract
         { value: priceInWei } // Use value for msg.value
       );
 
