@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useWalletAccount } from '../hooks/useWalletAccount';
 import { UploadModal } from '../components/UploadModal';
-import { encryptAndUpload } from '../services/fileService';
+import {
+  encryptAndUpload,
+  encryptWithRSAPublicKey,
+  decryptWithRSAPrivateKey,
+  decryptFileWithSecret,
+} from '../services/fileService';
 import { smartContractService } from '../services/smartContractService';
 import type { UploadedDocument } from '../types/nftTypes';
 
@@ -12,7 +17,7 @@ import {
   type Role,
   PurchaseActions,
 } from '../types/nftTypes';
-import MarketPlaceNFTCardView from '../components/MarketPlaceNFTCardView';
+import MarketPlaceNFTCardView from '../components/MarketplaceNFTCardView';
 import PortfolioNFTPurchasedCardView from '../components/PortfolioNFTPurchasedCardView';
 import {
   fetchListingNFTPreviewsByOwner,
@@ -73,11 +78,44 @@ export function Portfolio() {
         setMarketplaceListingNFTs(marketplaceNFTs);
         console.log(`✅ Loaded ${marketplaceNFTs.length} marketplace NFTs`);
 
-        // Fetch purchased NFTs (still using mock data for now)
-        const proposedByMeNFTs = await fetchPurchasedListingNFTPreviewsByProposer(address);
+        // Fetch purchased NFTs (proposed by me)
+        let proposedByMeNFTs = await fetchPurchasedListingNFTPreviewsByProposer(address);
+        // Fetch purchaseData for each
+        proposedByMeNFTs = await Promise.all(
+          proposedByMeNFTs.map(async (nft) => {
+            if (typeof nft.purchaseId === 'number') {
+              try {
+                const purchaseData = await smartContractService.getPurchase(nft.purchaseId);
+                console.log('[DEBUG] proposedByMe NFT', nft.purchaseId, purchaseData);
+                return { ...nft, purchaseData };
+              } catch (e) {
+                console.error('[DEBUG] Error fetching purchaseData for', nft.purchaseId, e);
+                return nft;
+              }
+            }
+            return nft;
+          })
+        );
         setProposedByMe(proposedByMeNFTs);
 
-        const proposedToMeNFTs = await fetchPurchasedListingNFTPreviewsByOwner(address);
+        // Fetch purchased NFTs (proposed to me)
+        let proposedToMeNFTs = await fetchPurchasedListingNFTPreviewsByOwner(address);
+        // Fetch purchaseData for each
+        proposedToMeNFTs = await Promise.all(
+          proposedToMeNFTs.map(async (nft) => {
+            if (typeof nft.purchaseId === 'number') {
+              try {
+                const purchaseData = await smartContractService.getPurchase(nft.purchaseId);
+                console.log('[DEBUG] proposedToMe NFT', nft.purchaseId, purchaseData);
+                return { ...nft, purchaseData };
+              } catch (e) {
+                console.error('[DEBUG] Error fetching purchaseData for', nft.purchaseId, e);
+                return nft;
+              }
+            }
+            return nft;
+          })
+        );
         setProposedToMe(proposedToMeNFTs);
       } catch (error) {
         console.error('Error fetching NFTs:', error);
@@ -275,7 +313,100 @@ export function Portfolio() {
       alert('Decryption failed: ' + (error as any).message);
     }
   };
+  // Seller-side: Encrypt and deliver the secret
+  const handleEncryptAndDeliver = async (nft: PurchasedListingNFT) => {
+    try {
+      if (typeof nft.purchaseId !== 'number') {
+        alert('Invalid purchase ID.');
+        return;
+      }
+      const purchase = await smartContractService.getPurchase(nft.purchaseId);
+      const buyerPublicKeyPEM = purchase.buyerPublicKey;
 
+      if (!buyerPublicKeyPEM) {
+        alert("Buyer's public key is missing!");
+        return;
+      }
+
+      const fileSecret = prompt('Enter the file secret to encrypt for the buyer:');
+      if (!fileSecret) {
+        alert('File secret is required!');
+        return;
+      }
+
+      console.log('Encrypting secret:', fileSecret);
+      console.log('With buyer public key:', buyerPublicKeyPEM);
+
+      const encryptedSecret = await encryptWithRSAPublicKey(buyerPublicKeyPEM, fileSecret);
+
+      const result = await smartContractService.setEncryptedSecret(nft.purchaseId, encryptedSecret);
+
+      if (result.success) {
+        alert('Encrypted secret delivered to buyer!');
+        // Refresh purchase data after delivery
+        const updatedPurchase = await smartContractService.getPurchase(nft.purchaseId);
+        // Update in proposedToMe
+        setProposedToMe((prev) =>
+          prev.map((item) =>
+            item.purchaseId === nft.purchaseId ? { ...item, purchaseData: updatedPurchase } : item
+          )
+        );
+        // Update in proposedByMe (in case the user is both buyer and seller)
+        setProposedByMe((prev) =>
+          prev.map((item) =>
+            item.purchaseId === nft.purchaseId ? { ...item, purchaseData: updatedPurchase } : item
+          )
+        );
+      } else {
+        alert('Failed to deliver encrypted secret: ' + result.error);
+      }
+    } catch (err) {
+      alert('Error: ' + (err as any).message);
+      console.error(err);
+    }
+  };
+
+  const handleDecryptAndDownload = async (nft: PurchasedListingNFT) => {
+    try {
+      // 1. Fetch purchase details (get encrypted secret)
+      if (typeof nft.purchaseId !== 'number') {
+        alert('Invalid purchase ID.');
+        return;
+      }
+      const purchase = await smartContractService.getPurchase(nft.purchaseId);
+      const encryptedSecret = purchase.encryptedSecret;
+
+      // 2. Get the private key PEM (from localStorage or prompt)
+      let privateKeyPEM = localStorage.getItem('zkcp_rsa_private_pem');
+      if (!privateKeyPEM) {
+        privateKeyPEM = prompt('Paste your private key PEM:');
+        if (!privateKeyPEM) return;
+      }
+
+      // 3. Decrypt the secret
+      const decryptedSecret = await decryptWithRSAPrivateKey(privateKeyPEM, encryptedSecret);
+
+      // 4. Download the encrypted file from IPFS
+      const fileEncHash = nft.nft.attributes.find((a) => a.trait_type === 'file_enc')?.value;
+      const fileUrl = `https://gateway.pinata.cloud/ipfs/${fileEncHash}`;
+      const response = await fetch(fileUrl);
+      const fileBlob = await response.blob();
+      const file = new File([fileBlob], 'downloaded.enc');
+
+      // 5. Decrypt the file
+      const decryptedFile = await decryptFileWithSecret(file, decryptedSecret);
+
+      // 6. Download the decrypted file
+      const url = URL.createObjectURL(decryptedFile);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = decryptedFile.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Error: ' + (err as any).message);
+    }
+  };
   return (
     <div className="bg-black text-white min-h-screen flex flex-col items-center justify-center pt-24 px-4">
       <div className="w-full max-w-5xl mx-auto space-y-8">
@@ -372,13 +503,16 @@ export function Portfolio() {
 
             {/* Proposed to me */}
             <div>
-              <h2 className="text-4xl font-bold text-yellow-400 mb-4 text-left">Proposed to me</h2>
+              <div className="flex items-center gap-4 mb-4">
+                <h2 className="text-4xl font-bold text-blue-400 text-left">Proposed to me</h2>
+              </div>
               {proposedToMe.length === 0 ? (
                 <div className="text-gray-400 text-left">No proposals found.</div>
               ) : (
                 <div className="flex overflow-x-auto space-x-6 pb-2">
                   {proposedToMe.map((nft, idx) => {
                     const role = address === nft.nft.owner ? 'owner' : 'proposer';
+                    const secretDelivered = !!nft.purchaseData?.encryptedSecret;
                     return (
                       <div key={idx} className="min-w-[320px]">
                         <PortfolioNFTPurchasedCardView
@@ -386,6 +520,31 @@ export function Portfolio() {
                           role={role}
                           onClick={() => handlePurchasedNFTClicked(nft, role)}
                         />
+                        {/* DEBUG: Show purchaseId and encryptedSecret */}
+                        <div className="text-xs text-gray-500 break-all">
+                          <div>purchaseId: {String(nft.purchaseId)}</div>
+                          <div>
+                            encryptedSecret: {nft.purchaseData?.encryptedSecret || '(none)'}
+                          </div>
+                        </div>
+                        {role === 'owner' && nft.purchaseState === 1 && (
+                          <>
+                            <button
+                              onClick={() => handleEncryptAndDeliver(nft)}
+                              className={`bg-blue-500 text-white px-4 py-2 rounded mt-2 ${secretDelivered ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              disabled={secretDelivered}
+                            >
+                              Encrypt & Deliver Secret
+                            </button>
+                            <div className="text-xs mt-1">
+                              {secretDelivered ? (
+                                <span className="text-green-400">Secret delivered to buyer ✓</span>
+                              ) : (
+                                <span className="text-yellow-400">Waiting for delivery</span>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
                     );
                   })}
@@ -402,6 +561,7 @@ export function Portfolio() {
                 <div className="flex overflow-x-auto space-x-6 pb-2">
                   {proposedByMe.map((nft, idx) => {
                     const role = address === nft.nft.owner ? 'owner' : 'proposer';
+                    const secretDelivered = !!nft.purchaseData?.encryptedSecret;
                     return (
                       <div key={idx} className="min-w-[320px]">
                         <PortfolioNFTPurchasedCardView
@@ -409,6 +569,24 @@ export function Portfolio() {
                           role={role}
                           onClick={() => handlePurchasedNFTClicked(nft, role)}
                         />
+                        {role === 'proposer' && secretDelivered && (
+                          <>
+                            <button
+                              onClick={() => handleDecryptAndDownload(nft)}
+                              className="bg-green-500 text-white px-4 py-2 rounded mt-2"
+                            >
+                              Decrypt Secret & Download File
+                            </button>
+                            <div className="text-xs mt-1">
+                              <span className="text-green-400">Secret delivered by seller ✓</span>
+                            </div>
+                          </>
+                        )}
+                        {role === 'proposer' && !secretDelivered && (
+                          <div className="text-xs mt-1 text-yellow-400">
+                            Waiting for seller to deliver secret
+                          </div>
+                        )}
                       </div>
                     );
                   })}

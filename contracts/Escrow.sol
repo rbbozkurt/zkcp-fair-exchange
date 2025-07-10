@@ -44,6 +44,9 @@ contract Escrow is ReentrancyGuard, AccessControl {
         bytes32 zkProofHash; // hash of the ZK proof submitted by the seller
         uint256 createdAt; // timestamp of purchase creation
         uint256 timeoutDeadline; // deadline for the current state
+        string buyerPublicKey; // public key of the buyer for encryption purposes
+        string encryptedSecret;
+
     }
 
     mapping(uint256 => Purchase) public purchases;
@@ -107,7 +110,7 @@ contract Escrow is ReentrancyGuard, AccessControl {
      // function for the buyer to initiate a purchase, specifying the seller and the dataset information they want to buy
      // isComplete flag is set to false initially, indicating that the purchase is not yet complete. The flags will be more detailed later
 
-    function submitPurchase(address seller, uint listingTokenId, string memory datasetInfo) public payable nonReentrant returns (uint256) {
+    function submitPurchase(address seller, uint listingTokenId, string memory datasetInfo, string memory buyerPublicKey) public payable nonReentrant returns (uint256) {
         require(msg.value > 0, "Amount must be greater than 0");
         require(seller != address(0), "Seller address cannot be zero");
         require(seller != msg.sender, "Buyer cannot be the seller");
@@ -133,7 +136,9 @@ contract Escrow is ReentrancyGuard, AccessControl {
             stateTimestamp: block.timestamp,
             zkProofHash: bytes32(0),
             createdAt: block.timestamp,
-            timeoutDeadline: block.timestamp + DELIVERY_TIMEOUT
+            timeoutDeadline: block.timestamp + DELIVERY_TIMEOUT,
+            buyerPublicKey: buyerPublicKey,
+            encryptedSecret: ""
         });
 
         emit PurchaseSubmitted(purchaseId, msg.sender, seller, msg.value);
@@ -149,7 +154,9 @@ contract Escrow is ReentrancyGuard, AccessControl {
         _transitionState(purchaseId, PurchaseState.VERIFIED, DELIVERY_TIMEOUT);
     }
 
-
+    function setEncryptedSecret(uint256 purchaseId, string memory encryptedSecret) public onlySeller(purchaseId) {
+         purchases[purchaseId].encryptedSecret = encryptedSecret;
+    }
 
     // updated function that mints the dataset NFT after the payment is made
      function deliverDataset(uint256 purchaseId, string memory datasetMetadataURI) public onlySeller(purchaseId) onlyInState(purchaseId, PurchaseState.VERIFIED) nonReentrant {
@@ -224,7 +231,9 @@ contract Escrow is ReentrancyGuard, AccessControl {
         uint256 amount, 
         uint256 listingTokenId, 
         bool isComplete, 
-        string memory datasetInfo
+        string memory datasetInfo,
+        string memory buyerPublicKey,
+        string memory encryptedSecret
     ) {
         Purchase storage purchase = purchases[purchaseId];
         return (
@@ -233,7 +242,9 @@ contract Escrow is ReentrancyGuard, AccessControl {
             purchase.amount, 
             purchase.listingTokenId, 
             purchase.state == PurchaseState.COMPLETED,
-            purchase.datasetInfo
+            purchase.datasetInfo,
+            purchase.buyerPublicKey,
+            purchase.encryptedSecret
         );
     }
 

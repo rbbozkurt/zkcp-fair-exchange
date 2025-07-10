@@ -371,17 +371,20 @@ export class SmartContractService {
     seller: string,
     listingTokenId: number,
     datasetInfo: string,
+    buyerPublicKey: string,
     priceInEth: string
   ): Promise<{ success: boolean; purchaseId?: number; transactionHash?: string; error?: string }> {
     try {
       this.ensureInitialized();
 
-      const priceInWei = parseEther(priceInEth);
+      const priceInWei = parseEther(priceInEth.toString());
       const transaction = await this.escrowContract!.submitPurchase(
         seller,
         listingTokenId,
         datasetInfo,
-        { value: priceInWei }
+        buyerPublicKey, // Pass the public key to the contract
+        //encryptedSecret, // Pass the encrypted secret to the contract
+        { value: priceInWei } // Use value for msg.value
       );
 
       const receipt = await transaction.wait();
@@ -504,6 +507,8 @@ export class SmartContractService {
         stateTimestamp: Number(purchaseState.stateTimestamp),
         timeoutDeadline: Number(purchaseState.timeoutDeadline),
         isTimedOut: purchaseState.isTimedOut,
+        buyerPublicKey: purchase.buyerPublicKey,
+        encryptedSecret: purchase.encryptedSecret,
       };
     } catch (error) {
       console.error('Failed to get purchase details:', error);
@@ -960,6 +965,20 @@ export class SmartContractService {
         return 11; // Frontend CANCELLED state
       default:
         return 1; // Default to PAID
+    }
+  }
+
+  async setEncryptedSecret(
+    purchaseId: number,
+    encryptedSecret: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.ensureInitialized();
+      const tx = await this.escrowContract!.setEncryptedSecret(purchaseId, encryptedSecret);
+      await tx.wait();
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to set encrypted secret' };
     }
   }
 }

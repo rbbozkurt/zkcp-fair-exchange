@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import MarketPlaceNFTCardView from '../components/MarketPlaceNFTCardView';
+import MarketPlaceNFTCardView from '../components/MarketplaceNFTCardView';
 import { useNavigate } from 'react-router-dom';
 import { fetchListingNFTPreviews } from '../services/listingNftService';
 import { smartContractService } from '../services/smartContractService';

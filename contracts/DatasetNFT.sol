@@ -78,7 +78,7 @@ contract DatasetNFT is ERC721, ERC721Burnable, ERC721URIStorage, AccessControl, 
         string memory category,
         uint256 price
     ) public nonReentrant returns (uint256) {
-        require(hasRole(OPERATOR_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Not authorized");
+        //require(hasRole(OPERATOR_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Not authorized");
         require(bytes(category).length > 0, "Category cannot be empty");
         require(price >= 0, "Price cannot be negative");
         require(bytes(metadataURI).length > 0, "Metadata URI cannot be empty"); // NEW: Basic validation
@@ -115,7 +115,7 @@ contract DatasetNFT is ERC721, ERC721Burnable, ERC721URIStorage, AccessControl, 
         uint256 listingTokenId,
         string memory datasetMetadataURI
     ) public nonReentrant returns (uint256) {
-        require(hasRole(OPERATOR_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Not authorized");
+        //require(hasRole(OPERATOR_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Not authorized");
 
         require(nftInfo[listingTokenId].nftType == NFTType.LISTING, "Invalid listing token ID");
         require(nftInfo[listingTokenId].isActive, "Listing is not active");

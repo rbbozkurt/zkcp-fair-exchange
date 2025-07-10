@@ -153,3 +153,56 @@ export async function decryptFileWithSecret(file: File, secret: string): Promise
     throw new Error('Invalid secret or corrupted file');
   }
 }
+
+export async function encryptWithRSAPublicKey(
+  publicKeyPEM: string,
+  secret: string
+): Promise<string> {
+  const pemHeader = '-----BEGIN PUBLIC KEY-----';
+  const pemFooter = '-----END PUBLIC KEY-----';
+  const pemContents = publicKeyPEM.replace(pemHeader, '').replace(pemFooter, '').replace(/\s/g, '');
+  const binaryDer = window.atob(pemContents);
+  const binaryDerBuffer = new Uint8Array([...binaryDer].map((char) => char.charCodeAt(0)));
+
+  const publicKey = await window.crypto.subtle.importKey(
+    'spki',
+    binaryDerBuffer,
+    { name: 'RSA-OAEP', hash: 'SHA-256' },
+    false,
+    ['encrypt']
+  );
+
+  const enc = new TextEncoder();
+  const encrypted = await window.crypto.subtle.encrypt(
+    { name: 'RSA-OAEP' },
+    publicKey,
+    enc.encode(secret)
+  );
+  return window.btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+}
+
+export async function decryptWithRSAPrivateKey(
+  privateKeyPEM: string,
+  encryptedBase64: string
+): Promise<string> {
+  const pemHeader = '-----BEGIN PRIVATE KEY-----';
+  const pemFooter = '-----END PRIVATE KEY-----';
+  const pemContents = privateKeyPEM
+    .replace(pemHeader, '')
+    .replace(pemFooter, '')
+    .replace(/\s/g, '');
+  const binaryDer = window.atob(pemContents);
+  const binaryDerBuffer = new Uint8Array([...binaryDer].map((char) => char.charCodeAt(0)));
+
+  const privateKey = await window.crypto.subtle.importKey(
+    'pkcs8',
+    binaryDerBuffer,
+    { name: 'RSA-OAEP', hash: 'SHA-256' },
+    false,
+    ['decrypt']
+  );
+
+  const encrypted = Uint8Array.from(window.atob(encryptedBase64), (c) => c.charCodeAt(0));
+  const decrypted = await window.crypto.subtle.decrypt({ name: 'RSA-OAEP' }, privateKey, encrypted);
+  return new TextDecoder().decode(decrypted);
+}

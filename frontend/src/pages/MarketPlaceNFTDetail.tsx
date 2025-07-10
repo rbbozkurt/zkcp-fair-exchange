@@ -4,6 +4,7 @@ import { useWalletAccount } from '../hooks/useWalletAccount';
 import { smartContractService } from '../services/smartContractService';
 import { fetchListingNFTDetailsByIPFSAddress } from '../services/listingNftService';
 import type { ListingNFT, ListingNFTAttribute } from '../types/nftTypes';
+import { PrivateKeyExportModal } from '../components/PrivateKeyExportModal';
 
 interface MarketPlaceNFTDetailCardViewProps {
   nft: ListingNFT;
@@ -225,6 +226,59 @@ const MarketPlaceNFTDetailCardView: React.FC<MarketPlaceNFTDetailCardViewProps> 
     </div>
   );
 };
+async function getOrCreateRSAKeyPair() {
+  const priv = localStorage.getItem('zkcp_rsa_private');
+  const pub = localStorage.getItem('zkcp_rsa_public');
+  let keyPair;
+
+  if (priv && pub) {
+    // Import both keys
+    const privateKey = await window.crypto.subtle.importKey(
+      'pkcs8',
+      Uint8Array.from(atob(priv), (c) => c.charCodeAt(0)),
+      { name: 'RSA-OAEP', hash: 'SHA-256' },
+      true,
+      ['decrypt']
+    );
+    const publicKey = await window.crypto.subtle.importKey(
+      'spki',
+      Uint8Array.from(atob(pub), (c) => c.charCodeAt(0)),
+      { name: 'RSA-OAEP', hash: 'SHA-256' },
+      true,
+      ['encrypt']
+    );
+    keyPair = { privateKey, publicKey };
+  } else {
+    // Generate new key pair
+    keyPair = await window.crypto.subtle.generateKey(
+      {
+        name: 'RSA-OAEP',
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: 'SHA-256',
+      },
+      true,
+      ['encrypt', 'decrypt']
+    );
+    // Export and store both keys
+    const exportedPrivate = await window.crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+    const exportedPublic = await window.crypto.subtle.exportKey('spki', keyPair.publicKey);
+    localStorage.setItem(
+      'zkcp_rsa_private',
+      btoa(String.fromCharCode(...new Uint8Array(exportedPrivate)))
+    );
+    localStorage.setItem(
+      'zkcp_rsa_public',
+      btoa(String.fromCharCode(...new Uint8Array(exportedPublic)))
+    );
+  }
+
+  // Export public key as PEM
+  const exported = await window.crypto.subtle.exportKey('spki', keyPair.publicKey);
+  const exportedAsBase64 = window.btoa(String.fromCharCode(...new Uint8Array(exported)));
+  const publicKeyPEM = `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64}\n-----END PUBLIC KEY-----`;
+  return { keyPair, publicKeyPEM };
+}
 
 export function MarketPlaceNFTDetail() {
   const { ipfs_address, tokenId } = useParams();
@@ -241,6 +295,8 @@ export function MarketPlaceNFTDetail() {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [showKeyExportModal, setShowKeyExportModal] = useState(false);
+  const [privateKeyPEM, setPrivateKeyPEM] = useState<string | null>(null);
 
   // Initialize smart contracts
   useEffect(() => {
@@ -382,24 +438,35 @@ export function MarketPlaceNFTDetail() {
 
       // Create purchase info
       const datasetInfo = `License purchase of ${nft.name} - ${nft.description}`;
+      const { publicKeyPEM } = await getOrCreateRSAKeyPair();
 
       console.log('🛒 Submitting license purchase...');
       console.log('Seller:', nft.owner);
       console.log('Token ID:', tokenId);
       console.log('Price:', priceInEth, 'ETH');
       console.log('Dataset info:', datasetInfo);
+      console.log('Buyer public key:', publicKeyPEM);
 
       // Submit purchase to smart contract
       const result = await smartContractService.submitPurchase(
         nft.owner!,
         Number(tokenId),
         datasetInfo,
+        publicKeyPEM,
         priceInEth
       );
 
       if (result.success) {
-        // Update license state immediately after successful purchase
         setHasLicense(true);
+        // Export private key as PEM for backup
+        const priv = localStorage.getItem('zkcp_rsa_private');
+        if (priv) {
+          // Convert base64 to PEM
+          const exportedAsBase64 = priv.match(/.{1,64}/g)?.join('\n') || priv;
+          const privateKeyPEM = `-----BEGIN PRIVATE KEY-----\n${exportedAsBase64}\n-----END PRIVATE KEY-----`;
+          setPrivateKeyPEM(privateKeyPEM);
+          setShowKeyExportModal(true);
+        }
 
         console.log('✅ License purchase submitted successfully!');
         console.log('🔗 Transaction hash:', result.transactionHash);
@@ -475,6 +542,13 @@ export function MarketPlaceNFTDetail() {
             Dismiss
           </button>
         </div>
+      )}
+      {/* Private Key Export Modal */}
+      {showKeyExportModal && privateKeyPEM && (
+        <PrivateKeyExportModal
+          privateKeyPEM={privateKeyPEM}
+          onClose={() => setShowKeyExportModal(false)}
+        />
       )}
     </div>
   );
