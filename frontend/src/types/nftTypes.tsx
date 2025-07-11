@@ -23,6 +23,7 @@ export interface ListingNFTPreview {
   description: string;
   image: string;
   attributes: ListingNFTAttribute[]; // Array of key-value attribute pairs
+  tokenId?: number; // Add optional tokenId field
 }
 
 /*
@@ -47,23 +48,26 @@ export interface ListingNFT {
   description: string; // Description of the NFT
   image: string; // IPFS address of the NFT image
   attributes: ListingNFTAttribute[]; // Array of key-value attribute pairs
+  tokenId?: number; // Add optional tokenId field
 }
 
 export interface PurchasedListingNFT {
   proposer: string; // Address of the proposer (buyer)
   nft: ListingNFT; // The NFT that was purchased
   purchaseState: PurchaseStateType; // Current state of the purchase
+  purchaseId?: number; // Purchase ID from smart contract
+  purchaseData?: any; // Additional purchase data from smart contract
 }
 
 export interface UploadedDocument {
-  name: string; // Name of the document
-  description: string; // Description of the document
-  image?: File | null; // Optional image IPFS address
-  file: File; // The encrypted file to be uploaded
-  price_in_usd: number; // Price in USD
-  type: string; // Type of the file (e.g., '.pdf', '.jpg')
-  category: string; // Category of the file
-  secret: string; // Secret used for encryption
+  name: string;
+  description: string;
+  price_in_usd: number;
+  type: string; // MIME type (e.g. 'application/pdf') or file extension (e.g. '.pdf'), auto-detected
+  category: string;
+  secret?: string;
+  file: File;
+  image?: File;
 }
 
 // make EncryptedFileResponse alias to ListingNFT

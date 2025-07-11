@@ -1,0 +1,21 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployer": "0xCcB68C335e84d86e83054aDf710551cf7cEbB2f9",
+  "blockNumber": 8730433,
+  "timestamp": 1752112669,
+  "contracts": {
+    "ZKVerifier": {
+      "address": "0x203349Ab860494c9A2B18b8E89a87601FFbD228F",
+      "transactionHash": "0xbf3482f55287a4865aa01131c14b294e135a7c7cc8ce291bc667bb3410ec7cbe"
+    },
+    "DatasetNFT": {
+      "address": "0x493a3b520659ea42EAB8eE233765B908426213b8",
+      "transactionHash": "0x633ae5e0e4c52724b7942fee08ada19f8c17c54eed9692b84be7aa0b4c0cf391"
+    },
+    "Escrow": {
+      "address": "0x9235DAf261A165a738450B1d31fa86AcF56a55f2",
+      "transactionHash": "0x0cb6706e60082af8637c7dd88f75f3fd560b71df119d7ad53de95b78eae66535"
+    }
+  }
+}
