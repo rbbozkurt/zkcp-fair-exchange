@@ -1,14 +1,6 @@
-use methods::{ZKDROP_GUEST_ELF, ZKDROP_GUEST_ID};
+use methods::{RSA_ENCRYPTER_ELF, RSA_ENCRYPTER_ID};
 use risc0_zkvm::{default_prover, ExecutorEnv};
-use zkdrop_lib::{AesCtrDecryptionProofInput, RsaEncryptAesKeyInput};
-
-use aes_gcm::{Aes256Gcm, Key, Nonce}; // AES-GCM 256
-use aes_gcm::aead::{Aead, KeyInit};
-
-use k256::ecdsa::{SigningKey, Signature, signature::Signer};
-// use k256::EncodedPoint;
-use rand_core::OsRng;
-use rand;
+use zkdrop_lib::types::{AesCtrDecryptionProofInput, RsaEncryptAesKeyInput, RsaEncryptAesKeyOutput};
 
 fn main() {
 
@@ -68,16 +60,16 @@ fn main() {
 
     // Step 8: Prove execution
     let prover = default_prover();
-    let prove_info = prover.prove(env, ZKDROP_GUEST_ELF).unwrap();
+    let prove_info = prover.prove(env, RSA_ENCRYPTER_ELF).unwrap();
     let receipt = prove_info.receipt;
 
     // Step 9: Decode guest journal output (bool)
     println!("Receipt: {:?}", receipt);
-    let output: String = receipt.journal.decode().unwrap();
-    println!("Output: {}", output);
+    let output: RsaEncryptAesKeyOutput = receipt.journal.decode().unwrap();
+    println!("Output: {}", output.message);
 
     // Step 10: Verify the receipt
-    receipt.verify(ZKDROP_GUEST_ID).unwrap();
+    receipt.verify(RSA_ENCRYPTER_ID).unwrap();
     
 
 

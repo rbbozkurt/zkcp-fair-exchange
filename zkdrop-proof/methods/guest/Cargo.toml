@@ -9,11 +9,3 @@ edition = "2021"
 zkdrop-lib = { path = "../../zkdrop-lib", default-features = false }
 risc0-zkvm = { version = "^2.2.0", default-features = false, features = ['std'] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-hex = "0.4"
-aes = { version = "0.8", default-features = false }
-ctr = { version = "0.9", default-features = false }
-rsa = { version = "0.9", default-features = false }
-sha2 = "0.10"
-base64 = "0.21"
-rand = { version = "0.8", default-features = false, features = ["alloc"] }
-rand_chacha = { version = "0.3", default-features = false }

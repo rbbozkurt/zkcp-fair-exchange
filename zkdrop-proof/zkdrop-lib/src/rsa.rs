@@ -4,11 +4,11 @@ use base64::{engine::general_purpose, Engine as _};
 use hex::{decode as hex_decode};
 use rand_chacha::ChaCha20Rng;
 use rand_chacha::rand_core::{SeedableRng, RngCore};
-use zkdrop_lib::{RsaEncryptedAesKeyInput, RsaEncryptAesKeyInput};
-
+use crate::types::{RsaEncryptedAesKeyInput, RsaEncryptAesKeyInput};
+use alloc::string::String;
 
 // ECIES keep that in mind for future work
-pub fn rsa_verifier(input: RsaEncryptedAesKeyInput) -> (bool, String) {
+pub fn rsa_verify(input: RsaEncryptedAesKeyInput) -> (bool, String) {
     let aes_key_bytes = match hex_decode(&input.aes_key_hex) {
         Ok(bytes) => bytes,
         Err(_) => return (false, String::from("Invalid AES key hex")),
