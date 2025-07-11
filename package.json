@@ -6,7 +6,8 @@
   "scripts": {
     "prepare": "husky install",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "deploy": "hardhat run scripts/deploy.ts --network sepolia"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
