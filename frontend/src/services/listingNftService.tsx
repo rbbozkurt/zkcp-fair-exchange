@@ -1,4 +1,8 @@
 import type { ListingNFTPreview, ListingNFT, PurchasedListingNFT } from '../types/nftTypes';
+import { smartContractService } from './smartContractService';
+
+// Configuration - set to true to use smart contracts, false for mock data
+const USE_SMART_CONTRACTS = true;
 
 const address1 = '0xFA7E7a79AC32fe399E9C28cBEAE286981A8F8510';
 const address2 = '0xFA7E7a79AC32fe399E9C28cBE1E286981A8F8510';
@@ -36,7 +40,6 @@ const mockListingNFTPreviewList: ListingNFTPreview[] = [
   },
 ];
 
-// Mock NFT data (should be imported or moved to a shared file in real app)
 const mockListingNFTList: Record<string, any> = {
   'ipfs://QmMysticForestNFT': {
     owner: address1,
@@ -80,81 +83,181 @@ const mockPurchasedListingNFTs: PurchasedListingNFT[] = [
   {
     proposer: address2,
     nft: mockListingNFTList['ipfs://QmMysticForestNFT'],
-    purchaseState: 5, // PAID
+    purchaseState: 5,
   },
   {
     proposer: address2,
     nft: mockListingNFTList['ipfs://QmWhitepaperNFT'],
-    purchaseState: 1, // ZK_PROOF_SUBMITTED
+    purchaseState: 1,
   },
   {
     proposer: address1,
     nft: mockListingNFTList['ipfs://QmGenesisAudioNFT'],
-    purchaseState: 2, // VERIFIED
+    purchaseState: 2,
   },
 ];
 
+// Updated functions that can use either smart contracts or mock data
 export async function fetchListingNFTPreviews(): Promise<ListingNFTPreview[]> {
-  // Simulate a network request with a delay
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(mockListingNFTPreviewList);
-    }, 200); // 200ms delay
-  });
+  if (USE_SMART_CONTRACTS) {
+    try {
+      console.log('🔗 Fetching listing NFTs from smart contract...');
+      const nfts = await smartContractService.fetchAllActiveListingNFTs();
+      console.log('✅ Fetched from smart contract:', nfts.length, 'NFTs');
+      return nfts;
+    } catch (error) {
+      console.error('❌ Failed to fetch from smart contract, falling back to mock data:', error);
+      return mockListingNFTPreviewList;
+    }
+  } else {
+    // Mock data with delay
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(mockListingNFTPreviewList);
+      }, 200);
+    });
+  }
 }
 
 export async function fetchListingNFTDetailsByIPFSAddress(
   ipfs_address: string
 ): Promise<ListingNFT> {
-  // Simulate a network request with a delay
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(mockListingNFTList[ipfs_address]);
-    }, 200); // 200ms delay
-  });
+  if (USE_SMART_CONTRACTS) {
+    try {
+      console.log('🔗 Fetching NFT details from smart contract for:', ipfs_address);
+
+      // For smart contract data, we need to find the NFT by metadata
+      // This is a simplified approach - in production you might want to index this better
+      const allNFTs = await smartContractService.fetchAllActiveListingNFTs();
+
+      const nft = allNFTs.find((nft) => {
+        const ipfsAttr = nft.attributes.find((attr) => attr.trait_type === 'ipfs_address');
+        return ipfsAttr?.value === ipfs_address;
+      });
+
+      if (!nft) {
+        throw new Error('NFT not found');
+      }
+
+      console.log('✅ Found NFT details from smart contract');
+      return nft as ListingNFT;
+    } catch (error) {
+      console.error('❌ Failed to fetch NFT details from smart contract:', error);
+      // Fall back to mock data
+      return mockListingNFTList[ipfs_address];
+    }
+  } else {
+    // Mock data with delay
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(mockListingNFTList[ipfs_address]);
+      }, 200);
+    });
+  }
 }
 
 export async function fetchListingNFTPreviewsByOwner(owner: string): Promise<ListingNFTPreview[]> {
-  // Filter the mock data by owner
-  const filteredNFTs = mockListingNFTPreviewList.filter(
-    (nft) => nft.owner.toLowerCase() === owner.toLowerCase()
-  );
+  if (USE_SMART_CONTRACTS) {
+    try {
+      console.log('🔗 Fetching listing NFTs by owner from smart contract:', owner);
+      const nfts = await smartContractService.fetchListingNFTsByOwner(owner);
+      console.log('✅ Fetched from smart contract:', nfts.length, 'NFTs for owner');
+      return nfts;
+    } catch (error) {
+      console.error('❌ Failed to fetch from smart contract, falling back to mock data:', error);
+      // Fall back to mock data
+      const filteredNFTs = mockListingNFTPreviewList.filter(
+        (nft) => nft.owner.toLowerCase() === owner.toLowerCase()
+      );
+      return filteredNFTs;
+    }
+  } else {
+    // Mock data with delay
+    const filteredNFTs = mockListingNFTPreviewList.filter(
+      (nft) => nft.owner.toLowerCase() === owner.toLowerCase()
+    );
 
-  // Simulate a network request with a delay
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(filteredNFTs);
-    }, 200); // 200ms delay
-  });
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(filteredNFTs);
+      }, 200);
+    });
+  }
 }
 
 export async function fetchPurchasedListingNFTPreviewsByProposer(
   proposer: string
 ): Promise<PurchasedListingNFT[]> {
-  // For simplicity, we return the same mock data as for uploaded NFTs
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(
-        mockPurchasedListingNFTs.filter(
-          (nft) => nft.proposer.toLowerCase() === proposer.toLowerCase()
-        )
+  if (USE_SMART_CONTRACTS) {
+    try {
+      console.log('🔗 Fetching purchases by proposer from smart contract:', proposer);
+      const purchases = await smartContractService.fetchPurchasesByBuyer(proposer);
+      console.log('✅ Fetched from smart contract:', purchases.length, 'purchases by proposer');
+      return purchases;
+    } catch (error) {
+      console.error(
+        '❌ Failed to fetch purchases from smart contract, falling back to mock data:',
+        error
       );
-    }, 200); // 200ms delay
-  });
+      // Fall back to mock data
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(
+            mockPurchasedListingNFTs.filter(
+              (nft) => nft.proposer.toLowerCase() === proposer.toLowerCase()
+            )
+          );
+        }, 200);
+      });
+    }
+  } else {
+    // Mock data with delay
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(
+          mockPurchasedListingNFTs.filter(
+            (nft) => nft.proposer.toLowerCase() === proposer.toLowerCase()
+          )
+        );
+      }, 200);
+    });
+  }
 }
 
 export async function fetchPurchasedListingNFTPreviewsByOwner(
   owner: string
 ): Promise<PurchasedListingNFT[]> {
-  // Filter the mock data by owner
-  const filteredNFTs = mockPurchasedListingNFTs.filter(
-    (nft) => nft.nft.owner.toLowerCase() === owner.toLowerCase()
-  );
+  if (USE_SMART_CONTRACTS) {
+    try {
+      console.log('🔗 Fetching purchases by owner from smart contract:', owner);
+      const purchases = await smartContractService.fetchPurchasesBySeller(owner);
+      console.log('✅ Fetched from smart contract:', purchases.length, 'purchases by owner');
+      return purchases;
+    } catch (error) {
+      console.error(
+        '❌ Failed to fetch purchases from smart contract, falling back to mock data:',
+        error
+      );
+      // Fall back to mock data
+      const filteredNFTs = mockPurchasedListingNFTs.filter(
+        (nft) => nft.nft.owner.toLowerCase() === owner.toLowerCase()
+      );
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(filteredNFTs);
+        }, 200);
+      });
+    }
+  } else {
+    // Mock data with delay
+    const filteredNFTs = mockPurchasedListingNFTs.filter(
+      (nft) => nft.nft.owner.toLowerCase() === owner.toLowerCase()
+    );
 
-  // Simulate a network request with a delay
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(filteredNFTs);
-    }, 200); // 200ms delay
-  });
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(filteredNFTs);
+      }, 200);
+    });
+  }
 }

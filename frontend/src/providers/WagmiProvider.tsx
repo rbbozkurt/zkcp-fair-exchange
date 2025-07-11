@@ -1,7 +1,7 @@
 import '@rainbow-me/rainbowkit/styles.css';
 import { getDefaultConfig, RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
-import { mainnet, polygon, arbitrum } from 'wagmi/chains';
+import { mainnet, polygon, arbitrum, sepolia } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
@@ -11,7 +11,7 @@ const appName = import.meta.env.VITE_APP_NAME || 'ZKCP';
 const config = getDefaultConfig({
   appName: appName,
   projectId: projectId,
-  chains: [mainnet, polygon, arbitrum],
+  chains: [mainnet, polygon, arbitrum, sepolia],
   ssr: false,
 });
 

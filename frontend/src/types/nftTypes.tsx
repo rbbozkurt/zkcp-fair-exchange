@@ -23,6 +23,7 @@ export interface ListingNFTPreview {
   description: string;
   image: string;
   attributes: ListingNFTAttribute[]; // Array of key-value attribute pairs
+  tokenId?: number; // Add optional tokenId field
 }
 
 /*
@@ -47,12 +48,15 @@ export interface ListingNFT {
   description: string; // Description of the NFT
   image: string; // IPFS address of the NFT image
   attributes: ListingNFTAttribute[]; // Array of key-value attribute pairs
+  tokenId?: number; // Add optional tokenId field
 }
 
 export interface PurchasedListingNFT {
   proposer: string; // Address of the proposer (buyer)
   nft: ListingNFT; // The NFT that was purchased
   purchaseState: PurchaseStateType; // Current state of the purchase
+  purchaseId?: number; // Purchase ID from smart contract
+  purchaseData?: any; // Additional purchase data from smart contract
 }
 
 export interface UploadedDocument {
