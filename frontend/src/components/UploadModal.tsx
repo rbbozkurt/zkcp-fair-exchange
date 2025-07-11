@@ -54,8 +54,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setMainFile(e.dataTransfer.files[0]);
-      setMainFileName(e.dataTransfer.files[0].name);
+      const file = e.dataTransfer.files[0];
+      setMainFile(file);
+      setMainFileName(file.name);
+      // Prefer file extension for type
+      const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
+      const detectedType = extMatch ? `.${extMatch[1]}` : file.type || 'application/octet-stream';
+      setFileType(detectedType);
     }
   };
 
@@ -78,8 +83,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
 
   const handleMainFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setMainFile(e.target.files[0]);
-      setMainFileName(e.target.files[0].name);
+      const file = e.target.files[0];
+      setMainFile(file);
+      setMainFileName(file.name);
+      // Prefer file extension for type
+      const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
+      const detectedType = extMatch ? `.${extMatch[1]}` : file.type || 'application/octet-stream';
+      setFileType(detectedType);
     }
   };
 
@@ -96,11 +106,11 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
         name,
         description,
         price_in_usd: Number(price),
-        type: fileType, // <-- change here
+        type: fileType, // auto-detected
         category,
         secret,
         file: mainFile,
-        image: imageFile,
+        image: imageFile ?? undefined,
       },
       (success: boolean, errorMsg?: string) => {
         if (success) {
@@ -230,14 +240,6 @@ export const UploadModal: React.FC<UploadModalProps> = ({ open, onClose, onSubmi
             min="0"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            required
-            disabled={!isEditing}
-          />
-          <input
-            className="bg-black/20 backdrop-blur-lg text-white border-2 border-white rounded px-4 py-2 placeholder-white"
-            placeholder="File Type (e.g. .jpg, .pdf)"
-            value={fileType}
-            onChange={(e) => setFileType(e.target.value)}
             required
             disabled={!isEditing}
           />

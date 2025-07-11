@@ -60,14 +60,14 @@ export interface PurchasedListingNFT {
 }
 
 export interface UploadedDocument {
-  name: string; // Name of the document
-  description: string; // Description of the document
-  image?: File | null; // Optional image IPFS address
-  file: File; // The encrypted file to be uploaded
-  price_in_usd: number; // Price in USD
-  type: string; // Type of the file (e.g., '.pdf', '.jpg')
-  category: string; // Category of the file
-  secret: string; // Secret used for encryption
+  name: string;
+  description: string;
+  price_in_usd: number;
+  type: string; // MIME type (e.g. 'application/pdf') or file extension (e.g. '.pdf'), auto-detected
+  category: string;
+  secret?: string;
+  file: File;
+  image?: File;
 }
 
 // make EncryptedFileResponse alias to ListingNFT
