@@ -1,7 +1,8 @@
-const toHex = (buffer: ArrayBuffer | Uint8Array): string =>
-  Array.from(new Uint8Array(buffer))
+const toHex = (buffer: ArrayBuffer | Uint8Array): string => {
+  return Array.from(new Uint8Array(buffer))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
+};
 
 const toBase64 = (buffer: ArrayBuffer): string =>
   btoa(String.fromCharCode(...new Uint8Array(buffer)));
@@ -28,6 +29,11 @@ async function hexToAesKey(hex: string): Promise<CryptoKey> {
     'encrypt',
     'decrypt',
   ]);
+}
+
+async function hexToUInt8Array(hex: string): Promise<Uint8Array> {
+  const buffer = hexToArrayBuffer(hex);
+  return new Uint8Array(buffer);
 }
 
 // RSA Key Export/Import
@@ -94,7 +100,7 @@ export default {
   aesKeyToRaw,
   aesKeyToHex,
   hexToAesKey,
-
+  hexToUInt8Array,
   publicKeyToDer,
   privateKeyToDer,
   importPublicKeyFromDer,

@@ -67,7 +67,8 @@ export interface UploadedDocument {
   price_in_usd: number; // Price in USD
   type: string; // Type of the file (e.g., '.pdf', '.jpg')
   category: string; // Category of the file
-  secret: string; // Secret used for encryption
+  secret: string; // Secret used for encryption in hex
+  iv: string; // Initialization vector (IV) for AES encryption in hex
 }
 
 // make EncryptedFileResponse alias to ListingNFT

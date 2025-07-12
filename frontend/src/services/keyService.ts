@@ -7,6 +7,11 @@ async function generateAesKey(): Promise<CryptoKey> {
   ]);
 }
 
+async function generateRandomIv(): Promise<Uint8Array> {
+  // Generate a 16-byte (128-bit) random IV for AES-CTR
+  return crypto.getRandomValues(new Uint8Array(16));
+}
+
 async function generateRsaKeyPair(): Promise<CryptoKeyPair> {
   return await crypto.subtle.generateKey(
     {
@@ -73,6 +78,36 @@ async function encryptBufferWithAesKeyUint8ArrayToHex(
   return encodingUtils.toHex(encryptedBuffer);
 }
 
+async function decryptBufferWithAesKey(
+  encryptedBuffer: ArrayBuffer,
+  aesKey: CryptoKey,
+  iv: Uint8Array
+): Promise<ArrayBuffer> {
+  return await crypto.subtle.decrypt(
+    { name: 'AES-CTR', counter: iv, length: 64 },
+    aesKey,
+    encryptedBuffer
+  );
+}
+
+async function decryptBufferWithAesKeyToUint8Array(
+  encryptedBuffer: ArrayBuffer,
+  aesKey: CryptoKey,
+  iv: Uint8Array
+): Promise<Uint8Array> {
+  const decryptedBuffer = await decryptBufferWithAesKey(encryptedBuffer, aesKey, iv);
+  return new Uint8Array(decryptedBuffer);
+}
+
+async function decryptBufferWithAesKeyUint8ArrayToHex(
+  encryptedBuffer: ArrayBuffer,
+  aesKey: CryptoKey,
+  iv: Uint8Array
+): Promise<string> {
+  const decryptedBuffer = await decryptBufferWithAesKeyToUint8Array(encryptedBuffer, aesKey, iv);
+  return encodingUtils.toHex(decryptedBuffer);
+}
+
 export default {
   generateAesKey,
   generateRsaKeyPair,
@@ -84,4 +119,8 @@ export default {
   encryptBufferWithAesKeyUint8ArrayToHex,
   decryptWithRsa,
   decryptWithRsaToHex,
+  generateRandomIv,
+  decryptBufferWithAesKey,
+  decryptBufferWithAesKeyToUint8Array,
+  decryptBufferWithAesKeyUint8ArrayToHex,
 };
