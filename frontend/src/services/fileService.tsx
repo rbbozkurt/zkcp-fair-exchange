@@ -41,6 +41,9 @@ export async function encryptAndUpload(
 ): Promise<EncryptedFileResponse> {
   try {
     // Encrypt the file
+    if (!data.secret) {
+      throw new Error('Secret is required for encryption');
+    }
     const encryptedFile = await encryptFileWithSecret(data.file, data.secret);
 
     // Upload the encrypted file to IPFS
