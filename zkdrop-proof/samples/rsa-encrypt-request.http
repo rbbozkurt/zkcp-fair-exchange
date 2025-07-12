@@ -1,0 +1,8 @@
+### RSA Encrypt (Local)
+POST http://localhost:8081/rsa-encrypt?prove_mode=local
+Content-Type: application/json
+
+{
+    "aes_key_hex": "09c40804a785de29d9e199df192549069fced35ab05058332da2c51318a034d0",
+    "rsa_pubkey_base64": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAgxYfNfUy5CGx4LMUnv9m0mTRFOkIORiwALKEiCp3Gc04ICRcLPGUUkr98nLHsRRH4OuCmKjsLvB6qiWlw+le1lwqAIVYJXcSG6jIR7PkeonBun9G8PlWlegdzys5EQEh923PCAoddm3BWhNMD0Riz1b4Tw8bePO6q3w5BLIg8o4B5u5ockWEZluvnmSmRbuYQmcPiAKIZyRQeD3qQU1AIB2YwjXhTFyEFR6To4NXFt+VYBUtBNNbN1TzXvTw9pG650HaMWKmxUuHsSyqHWQ5SZtmLVFSrhL426eWV/XthkUx1j/dvlfklSdYLERxJD9CcvZxUdoXngjXKlnlFNsjqQIDAQAB"
+}
