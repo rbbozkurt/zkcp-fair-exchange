@@ -5,7 +5,6 @@ import { useWalletAccount } from '../hooks/useWalletAccount';
 import { smartContractService } from '../services/smartContractService';
 import { fetchListingNFTDetailsByIPFSAddress } from '../services/listingNftService';
 import type { ListingNFT, ListingNFTAttribute } from '../types/nftTypes';
-import { PrivateKeyExportModal } from '../components/PrivateKeyExportModal';
 
 interface MarketPlaceNFTDetailCardViewProps {
   nft: ListingNFT;
@@ -358,7 +357,6 @@ export function MarketPlaceNFTDetail() {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
-  const [showKeyExportModal, setShowKeyExportModal] = useState(false);
   const [privateKeyPEM, setPrivateKeyPEM] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [purchaseDetails, setPurchaseDetails] = useState<{
@@ -539,7 +537,6 @@ export function MarketPlaceNFTDetail() {
           const exportedAsBase64 = priv.match(/.{1,64}/g)?.join('\n') || priv;
           const privateKeyPEM = `-----BEGIN PRIVATE KEY-----\n${exportedAsBase64}\n-----END PRIVATE KEY-----`;
           setPrivateKeyPEM(privateKeyPEM);
-          setShowKeyExportModal(true);
         }
 
         console.log('✅ License purchase submitted successfully!');
@@ -642,11 +639,6 @@ export function MarketPlaceNFTDetail() {
                     readOnly
                     className="w-full h-32 bg-black/50 text-white text-xs font-mono p-3 rounded border border-white/20 resize-none"
                   />
-                  <textarea
-                    value={privateKeyPEM}
-                    readOnly
-                    className="w-full h-32 bg-black/50 text-white text-xs font-mono p-3 rounded border border-white/20 resize-none"
-                  />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                     <button
                       onClick={(e) => {
@@ -706,13 +698,6 @@ export function MarketPlaceNFTDetail() {
             Dismiss
           </button>
         </div>
-      )}
-      {/* Private Key Export Modal */}
-      {showKeyExportModal && privateKeyPEM && (
-        <PrivateKeyExportModal
-          privateKeyPEM={privateKeyPEM}
-          onClose={() => setShowKeyExportModal(false)}
-        />
       )}
     </div>
   );
