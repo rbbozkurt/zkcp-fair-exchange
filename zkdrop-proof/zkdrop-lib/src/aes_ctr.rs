@@ -3,7 +3,6 @@ use aes::Aes256;
 use ctr::cipher::{KeyIvInit, StreamCipher}; // AES-CTR trait
 use hex::{decode};
 use alloc::string::String;
-use serde::{Deserialize, Serialize};
 
 type Aes256Ctr = ctr::Ctr128BE<Aes256>; // uses 128-bit (16-byte) IV, which you're already using
 use crate::types::AesCtrDecryptionProofInput;

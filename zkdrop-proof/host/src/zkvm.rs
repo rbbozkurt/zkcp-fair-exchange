@@ -21,6 +21,7 @@ pub enum ProveMode {
 }
 
 fn run_local(env: ExecutorEnv, elf: &[u8], method_id: &[u32; 8]) -> Receipt {
+    println!("Running local proof generation...");
     let prove_info = default_prover().prove(env, elf).unwrap();
 
     let receipt: Receipt = prove_info.receipt;

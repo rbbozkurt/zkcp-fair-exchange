@@ -6,8 +6,6 @@ use zkdrop_lib::types::{
 };
 use zkdrop_lib::utils::receipt_to_base64;
 use risc0_zkvm::Receipt;
-use bincode::serialize;
-use base64::{engine::general_purpose, Engine as _};
 
 use super::{ProveParams, resolve_mode};
 

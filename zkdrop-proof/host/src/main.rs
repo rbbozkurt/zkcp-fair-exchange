@@ -1,20 +1,23 @@
-use axum::{Router};
+use axum;
 use tracing_subscriber::FmtSubscriber;
 mod routes;
 mod zkvm;
 mod handlers;
+mod config;
 
 #[tokio::main]
 async fn main() {
-     // Setup logging
-     FmtSubscriber::builder().init();
 
-     // Build app with routes
-     let app = routes::build_router();
- 
-     // Run server
-     let listener = tokio::net::TcpListener::bind("0.0.0.0:8085").await.unwrap();
-     println!("Server running on http://localhost:8085");
-     axum::serve(listener, app).await.unwrap();
+    config::load_env();
 
+    // Setup logging
+    FmtSubscriber::builder().init();
+
+    // Build app with routes
+    let app = routes::build_router();
+
+    // Run server
+    let listener = tokio::net::TcpListener::bind(config::get_address()).await.unwrap();
+    println!("🟢 Server starting on {}", config::get_address());
+    axum::serve(listener, app).await.unwrap();
 }

@@ -1,111 +1,194 @@
-# RISC Zero Rust Starter Template
+# ZkDrop Proof - Zero-Knowledge Fair Exchange Protocol
 
-Welcome to the RISC Zero Rust Starter Template! This template is intended to
-give you a starting point for building a project using the RISC Zero zkVM.
-Throughout the template (including in this README), you'll find comments
-labelled `TODO` in places where you'll need to make changes. To better
-understand the concepts behind this template, check out the [zkVM
-Overview][zkvm-overview].
+ZkDrop Proof is a zero-knowledge powered fair exchange engine designed to verify encryption and decryption operations using Zero-Knowledge Proofs (ZKPs) based on RISC Zero's zkVM. It supports RSA and AES-CTR based cryptographic workflows and offers multiple proving backends including Bonsai.
 
-## Quick Start
+## 🌟 Features
 
-First, make sure [rustup] is installed. The
-[`rust-toolchain.toml`][rust-toolchain] file will be used by `cargo` to
-automatically install the correct version.
+- **Zero-Knowledge Proofs**: Verifiable cryptographic computations without revealing sensitive data
+- **RSA Encryption/Verification**: Proof that an AES key was correctly encrypted using RSA
+- **AES-CTR Verification**: Proof that AES-CTR encrypted data decrypts correctly
+- **Three Proving Modes**:
 
-To build all methods and execute the method within the zkVM, run the following
-command:
+  - `local`: Proof generation and verification fully on the host (non-dummy, real execution)
+  - `bonsai`: Remote proof generation via Bonsai proving service
+  - `bonsai_snark`: Bonsai proof generation followed by SNARK conversion for on-chain use cases
 
-```bash
-cargo run
-```
+- **REST API**: Expose proof generation via simple HTTP endpoints
+- **Docker Support**: Containerized setup for consistent deployment
+- **Development Mode (`RISC0_DEV_MODE`)**: Enables dummy proving and dummy verification (fastest), useful for development only
 
-This is an empty template, and so there is no expected output (until you modify
-the code).
+---
 
-### Executing the Project Locally in Development Mode
+## 🧠 Protocol Flow
 
-During development, faster iteration upon code changes can be achieved by leveraging [dev-mode], we strongly suggest activating it during your early development phase. Furthermore, you might want to get insights into the execution statistics of your project, and this can be achieved by specifying the environment variable `RUST_LOG="[executor]=info"` before running your project.
+1. Seller encrypts content with AES-CTR
+2. AES key is encrypted using the buyer's RSA public key
+3. Seller generates three ZKPs:
 
-Put together, the command to run your project in development mode while getting execution statistics is:
+   - AES-CTR ciphertext decrypts to plaintext
+   - RSA ciphertext decrypts to AES key
+   - The encryption logic was executed correctly
 
-```bash
-RUST_LOG="[executor]=info" RISC0_DEV_MODE=1 cargo run
-```
+4. Buyer verifies the proofs before purchasing
+5. After purchase, buyer uses RSA private key to decrypt the AES key
+6. AES key is used to decrypt and access the content
 
-### Running Proofs Remotely on Bonsai
+---
 
-_Note: The Bonsai proving service is still in early Alpha; an API key is
-required for access. [Click here to request access][bonsai access]._
-
-If you have access to the URL and API key to Bonsai you can run your proofs
-remotely. To prove in Bonsai mode, invoke `cargo run` with two additional
-environment variables:
-
-```bash
-BONSAI_API_KEY="YOUR_API_KEY" BONSAI_API_URL="BONSAI_URL" cargo run
-```
-
-## How to Create a Project Based on This Template
-
-Search this template for the string `TODO`, and make the necessary changes to
-implement the required feature described by the `TODO` comment. Some of these
-changes will be complex, and so we have a number of instructional resources to
-assist you in learning how to write your own code for the RISC Zero zkVM:
-
-- The [RISC Zero Developer Docs][dev-docs] is a great place to get started.
-- Example projects are available in the [examples folder][examples] of
-  [`risc0`][risc0-repo] repository.
-- Reference documentation is available at [https://docs.rs][docs.rs], including
-  [`risc0-zkvm`][risc0-zkvm], [`cargo-risczero`][cargo-risczero],
-  [`risc0-build`][risc0-build], and [others][crates].
-
-## Directory Structure
-
-It is possible to organize the files for these components in various ways.
-However, in this starter template we use a standard directory structure for zkVM
-applications, which we think is a good starting point for your applications.
+## 📁 Project Structure
 
 ```text
-project_name
-├── Cargo.toml
-├── host
-│   ├── Cargo.toml
-│   └── src
-│       └── main.rs                    <-- [Host code goes here]
-└── methods
-    ├── Cargo.toml
-    ├── build.rs
-    ├── guest
-    │   ├── Cargo.toml
-    │   └── src
-    │       └── method_name.rs         <-- [Guest code goes here]
-    └── src
-        └── lib.rs
+zkdrop-proof/
+├── host/               # Host API exposing Axum endpoints
+│   ├── src/
+│   │   ├── main.rs         # Entry point
+│   │   ├── zkvm.rs         # Proof mode dispatcher and guest binary interaction
+│   │   ├── config.rs       # Loads .env / runtime settings
+│   │   ├── routes.rs       # HTTP routing
+│   │   └── handlers/       # Each handler handles one proof type
+│   └── Cargo.toml
+│
+├── methods/            # RISC0 zkVM guest code
+│   ├── guest/
+│   │   └── src/bin/
+│   │       ├── aes_ctr_verifier.rs
+│   │       ├── rsa_encrypter.rs
+│   │       └── rsa_verifier.rs
+│   └── src/lib.rs       # Shared code for guests
+│
+├── zkdrop-lib/         # Shared logic (used in both host & guest)
+│   └── src/
+│       ├── types.rs
+│       ├── aes_ctr.rs
+│       ├── rsa.rs
+│       └── utils.rs
+│
+├── docker-compose.yaml # Compose for running the host service
+├── Dockerfile          # Multi-stage container build
+├── Makefile            # Compose CLI helpers (compose-up/down/build)
+├── .env.template       # Template config for secrets and ports
+├── samples/            # HTTP request samples
+│   ├── aes-verify-request.http
+│   ├── rsa-encrypt-request.http
+│   └── rsa-verify-request.http
+├── rust-toolchain.toml
+├── Cargo.toml          # Workspace manifest
+└── README.md
 ```
 
-## Video Tutorial
+---
 
-For a walk-through of how to build with this template, check out this [excerpt
-from our workshop at ZK HACK III][zkhack-iii].
+## 🚀 Getting Started
 
-## Questions, Feedback, and Collaborations
+### ✅ Prerequisites
 
-We'd love to hear from you on [Discord][discord] or [Twitter][twitter].
+- Rust >= 1.81.0 (install via \[rustup])
+- RISC Zero SDK (install via [`rzup`](https://dev.risczero.com/api/zkvm/install))
+- Docker (for containerized use)
 
-[bonsai access]: https://bonsai.xyz/apply
-[cargo-risczero]: https://docs.rs/cargo-risczero
-[crates]: https://github.com/risc0/risc0/blob/main/README.md#rust-binaries
-[dev-docs]: https://dev.risczero.com
-[dev-mode]: https://dev.risczero.com/api/generating-proofs/dev-mode
-[discord]: https://discord.gg/risczero
-[docs.rs]: https://docs.rs/releases/search?query=risc0
-[examples]: https://github.com/risc0/risc0/tree/main/examples
-[risc0-build]: https://docs.rs/risc0-build
-[risc0-repo]: https://www.github.com/risc0/risc0
-[risc0-zkvm]: https://docs.rs/risc0-zkvm
-[rust-toolchain]: rust-toolchain.toml
-[rustup]: https://rustup.rs
-[twitter]: https://twitter.com/risczero
-[zkhack-iii]: https://www.youtube.com/watch?v=Yg_BGqj_6lg&list=PLcPzhUaCxlCgig7ofeARMPwQ8vbuD6hC5&index=5
-[zkvm-overview]: https://dev.risczero.com/zkvm
+### 📦 Setup
+
+```bash
+git https://github.com/rbbozkurt/zkcp-fair-exchange.git
+cd zkdrop-proof
+cp .env.template .env
+```
+
+### 🧪 Local Proving Mode
+
+Runs full zkVM execution and proof generation/verification **on your machine**.
+
+```bash
+cargo run --release
+```
+
+### ⚡ Development Dummy Mode
+
+Set `RISC0_DEV_MODE=1` to enable dummy proof generation and verification (skips actual proving).
+
+```bash
+RISC0_DEV_MODE=1 cargo run --release
+```
+
+> ⚠️ This is **not** the same as `local` mode. Dev mode **fakes** proofs and is only for fast iterations.
+
+### 🌐 Bonsai Proving
+
+Remote proof generation on [Bonsai](https://bonsai.xyz) infrastructure.
+
+```bash
+BONSAI_API_KEY=your_key BONSAI_API_URL=https://api.bonsai.xyz cargo run --release
+```
+
+You can also set these in `.env`:
+
+```env
+BONSAI_API_KEY=your_key
+BONSAI_API_URL=https://api.bonsai.xyz
+```
+
+### 🧬 Bonsai SNARK Mode
+
+Use `prove_mode=bonsai_snark` to generate SNARKed proofs (e.g., for on-chain verification).
+
+---
+
+## 🧩 API Endpoints
+
+### `POST /rsa-encrypt?prove_mode=local|bonsai|bonsai_snark`
+
+Generates a proof that AES key was encrypted using RSA public key.
+
+### `POST /rsa-verify?prove_mode=local|bonsai|bonsai_snark`
+
+Verifies that RSA ciphertext decrypts to correct AES key.
+
+### `POST /aes-verify?prove_mode=local|bonsai|bonsai_snark`
+
+Verifies that AES-CTR ciphertext decrypts to original plaintext.
+
+**NOTE: Check the `host/src/handlers` for more info about routes, requests and responses.**
+
+---
+
+## ⚙️ Configuration
+
+| Key              | Description                     | Default    |
+| ---------------- | ------------------------------- | ---------- |
+| `HOST_APP_PORT`  | HTTP server port                | `8095`     |
+| `RISC0_DEV_MODE` | Enables dummy proofs (dev-only) | unset      |
+| `BONSAI_API_KEY` | Bonsai access token             | required   |
+| `BONSAI_API_URL` | Bonsai API base URL             | see Bonsai |
+
+---
+
+## 🔐 Security Considerations
+
+- Do **not** use `RISC0_DEV_MODE=1` in production.
+- Ensure RSA and AES keys are securely generated and stored.
+- Use SNARK mode for verifiable on-chain assets.
+
+---
+
+## 🧪 Development & Testing
+
+- Use `samples/` directory to run `.http` requests from tools like VSCode REST Client or Postman.
+- Add your logic in `handlers/`, link it via `routes.rs`
+
+---
+
+## 📄 License
+
+MIT License
+
+## 🙏 Acknowledgments
+
+- [RISC Zero](https://github.com/risc0/risc0) zkVM
+- Axum for web framework
+- Bonsai for remote proving support
+
+---
+
+## 📫 Contact
+
+If you have questions, reach out via GitHub or email.

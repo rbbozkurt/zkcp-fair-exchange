@@ -3,7 +3,7 @@ use sha2::Sha256;
 use base64::{engine::general_purpose, Engine as _};
 use hex::{decode as hex_decode};
 use rand_chacha::ChaCha20Rng;
-use rand_chacha::rand_core::{SeedableRng, RngCore};
+use rand_chacha::rand_core::{SeedableRng};
 use crate::types::{RsaEncryptedAesKeyInput, RsaEncryptAesKeyInput};
 use alloc::string::String;
 

@@ -1,8 +1,6 @@
 use axum::{extract::Query, Json};
-use axum::http::StatusCode;
 use crate::zkvm;
 use zkdrop_lib::types::{AesCtrDecryptionProofInput, AesCtrDecryptionProofOutput};
-use risc0_zkvm::Receipt;
 use super::{ProveParams, resolve_mode};
 
 /// Response structure returned by the AES-CTR decryption proof endpoint.
