@@ -435,7 +435,7 @@ export function Portfolio() {
   };
 
   return (
-    <div className="bg-black text-white min-h-screen flex flex-col items-center justify-center pt-24 px-4">
+    <div className="bg-black text-white min-h-screen flex flex-col items-center pt-24 px-4">
       <div className="w-full max-w-7xl mx-auto space-y-8">
         <div className="flex items-center pt-6 justify-between">
           <div>
