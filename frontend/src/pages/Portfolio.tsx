@@ -9,7 +9,7 @@ import {
 } from '../services/fileService';
 import { smartContractService } from '../services/smartContractService';
 import type { UploadedDocument } from '../types/nftTypes';
-
+import type { UploadModalProps } from '../components/UploadModal';
 import {
   type ListingNFTPreview,
   type PurchasedListingNFT,
@@ -28,12 +28,137 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 export function Portfolio() {
+  const onModalUploadError = (error: string) => {
+    setUploadModalState((prev) => ({
+      ...prev,
+      status: 'ON_ERROR',
+      message: error,
+    }));
+    setTimeout(() => {
+      setUploadModalState((prev) => ({ ...prev, open: false, status: 'EDITING', message: '' }));
+    }, 3000);
+  };
+
+  const onModalUploadSuccess = (message: string) => {
+    setUploadModalState((prev) => ({
+      ...prev,
+      status: 'ON_SUCCESS',
+      message,
+    }));
+    setTimeout(() => {
+      setUploadModalState((prev) => ({
+        ...prev,
+        open: true,
+        status: 'WAITING_FOR_DOWNLOAD',
+        message: '',
+      }));
+    }, 2000);
+  };
+
+  const handleModalClose = () => {
+    if (uploadModalState.status === 'SUBMITTING') {
+      // If submitting, we can't close the modal
+      return;
+    }
+    setUploadModalState((prev) => ({ ...prev, open: false, status: 'EDITING', message: '' }));
+  };
+
+  const handleModalSubmit = async (uploadedDocument: UploadedDocument) => {
+    setUploadModalState((prev) => ({ ...prev, status: 'SUBMITTING', message: 'Uploading...' }));
+    if (!address) {
+      onModalUploadError('Wallet address is not available.');
+      return;
+    }
+
+    if (!isSmartContractReady) {
+      onModalUploadError('Smart contracts are not initialized. Please try again.');
+      setTimeout(() => {
+        setUploadModalState((prev) => ({ ...prev, open: false, status: 'EDITING', message: '' }));
+      }, 3000);
+      return;
+    }
+
+    setUploadingNFT(true);
+
+    try {
+      // Step 1: Initialize smart contract service
+      const initialized = await smartContractService.initialize();
+      if (!initialized) {
+        onModalUploadError('Failed to initialize smart contracts');
+        return;
+      }
+      console.log('✅ Smart contracts initialized');
+
+      // Step 2: Encrypt and upload to IPFS
+      console.log('📤 Uploading to IPFS...');
+      const uploadResponse = await encryptAndUpload(uploadedDocument, address);
+      console.log('✅ File uploaded to IPFS:', uploadResponse);
+
+      // Step 3: Extract metadata for NFT minting
+      const metadataIPFS = uploadResponse.attributes.find(
+        (attr) => attr.trait_type === 'ipfs_address'
+      )?.value as string;
+
+      if (!metadataIPFS) {
+        onModalUploadError('Failed to get IPFS metadata URI from upload');
+        return;
+      }
+
+      const metadataURI = `ipfs://${metadataIPFS}`;
+      const category = uploadedDocument.category || 'General';
+
+      // Convert USD to ETH (simple conversion - you might want to use a real API)
+      const priceInEth = (uploadedDocument.price_in_usd * 0.0003).toFixed(6);
+
+      console.log('🏗️ Minting NFT with data:', {
+        seller: address,
+        metadataURI,
+        category,
+        priceInEth,
+      });
+
+      // Step 4: Mint listing NFT on smart contract
+      console.log('⛓️ Minting listing NFT...');
+      const mintResult = await smartContractService.mintListingNFT(
+        address,
+        metadataURI,
+        category,
+        priceInEth
+      );
+
+      if (!mintResult.success) {
+        onModalUploadError(mintResult.error || 'Failed to mint NFT');
+      }
+
+      console.log('🎉 NFT minted successfully!');
+      console.log('📊 Mint result:', mintResult);
+
+      // Step 5: Refresh the marketplace listings to show new NFT
+      console.log('🔄 Refreshing marketplace listings...');
+      const updatedNFTs = await fetchListingNFTPreviewsByOwner(address);
+      setMarketplaceListingNFTs(updatedNFTs);
+
+      // Success!
+      onModalUploadSuccess('🎉 NFT minted successfully!');
+    } catch (error: any) {
+      console.error('❌ Upload and minting failed:', error);
+      onModalUploadError(error.message || '❌ Upload and minting failed');
+    } finally {
+      setUploadingNFT(false);
+    }
+  };
+
   const { isConnected, address } = useWalletAccount();
-  const [showModal, setShowModal] = useState(false);
   const [isSmartContractReady, setIsSmartContractReady] = useState(false);
   const [uploadingNFT, setUploadingNFT] = useState(false);
   const [isLoadingNFTs, setIsLoadingNFTs] = useState(false);
-
+  const [uploadModalState, setUploadModalState] = useState<UploadModalProps>({
+    open: false,
+    status: 'EDITING',
+    message: '',
+    onClose: handleModalClose,
+    onSubmit: handleModalSubmit,
+  });
   const [marketplaceListingNFTs, setMarketplaceListingNFTs] = useState<ListingNFTPreview[]>([]);
   const [proposedByMe, setProposedByMe] = useState<PurchasedListingNFT[]>([]);
   const [proposedToMe, setProposedToMe] = useState<PurchasedListingNFT[]>([]);
@@ -152,87 +277,6 @@ export function Portfolio() {
   };
 
   // Updated upload handler with smart contract integration
-  const handleUpload = async (
-    uploadedDocument: UploadedDocument,
-    done: (success: boolean, errorMsg?: string) => void
-  ) => {
-    if (!address) {
-      done(false, 'Wallet address is not available.');
-      return;
-    }
-
-    if (!isSmartContractReady) {
-      done(false, 'Smart contracts are not initialized. Please try again.');
-      return;
-    }
-
-    setUploadingNFT(true);
-
-    try {
-      // Step 1: Initialize smart contract service
-      const initialized = await smartContractService.initialize();
-      if (!initialized) {
-        throw new Error('Failed to initialize smart contracts');
-      }
-      console.log('✅ Smart contracts initialized');
-
-      // Step 2: Encrypt and upload to IPFS
-      console.log('📤 Uploading to IPFS...');
-      const uploadResponse = await encryptAndUpload(uploadedDocument, address);
-      console.log('✅ File uploaded to IPFS:', uploadResponse);
-
-      // Step 3: Extract metadata for NFT minting
-      const metadataIPFS = uploadResponse.attributes.find(
-        (attr) => attr.trait_type === 'ipfs_address'
-      )?.value as string;
-
-      if (!metadataIPFS) {
-        throw new Error('Failed to get IPFS metadata URI from upload');
-      }
-
-      const metadataURI = `ipfs://${metadataIPFS}`;
-      const category = uploadedDocument.category || 'General';
-
-      // Convert USD to ETH (simple conversion - you might want to use a real API)
-      const priceInEth = (uploadedDocument.price_in_usd * 0.0003).toFixed(6);
-
-      console.log('🏗️ Minting NFT with data:', {
-        seller: address,
-        metadataURI,
-        category,
-        priceInEth,
-      });
-
-      // Step 4: Mint listing NFT on smart contract
-      console.log('⛓️ Minting listing NFT...');
-      const mintResult = await smartContractService.mintListingNFT(
-        address,
-        metadataURI,
-        category,
-        priceInEth
-      );
-
-      if (!mintResult.success) {
-        throw new Error(mintResult.error || 'Failed to mint NFT');
-      }
-
-      console.log('🎉 NFT minted successfully!');
-      console.log('📊 Mint result:', mintResult);
-
-      // Step 5: Refresh the marketplace listings to show new NFT
-      console.log('🔄 Refreshing marketplace listings...');
-      const updatedNFTs = await fetchListingNFTPreviewsByOwner(address);
-      setMarketplaceListingNFTs(updatedNFTs);
-
-      // Success!
-      done(true);
-    } catch (error: any) {
-      console.error('❌ Upload and minting failed:', error);
-      done(false, error.message || 'Upload and minting failed');
-    } finally {
-      setUploadingNFT(false);
-    }
-  };
 
   const navigate = useNavigate();
 
@@ -434,6 +478,10 @@ export function Portfolio() {
     }
   };
 
+  const handleOnUploadDocumentClicked = () => {
+    setUploadModalState((prev) => ({ ...prev, open: true }));
+  };
+
   return (
     <div className="bg-black text-white min-h-screen flex flex-col items-center pt-24 px-4">
       <div className="w-full max-w-7xl mx-auto space-y-8">
@@ -458,7 +506,7 @@ export function Portfolio() {
                     ? 'bg-black text-white border-white hover:bg-white hover:text-black hover:border-black'
                     : 'bg-gray-800 text-gray-400 border-gray-400 cursor-not-allowed'
                 }`}
-                onClick={() => setShowModal(true)}
+                onClick={handleOnUploadDocumentClicked}
                 disabled={!isConnected || !isSmartContractReady || uploadingNFT}
               >
                 {uploadingNFT ? '⏳ Uploading...' : '+ Upload Document'}
@@ -699,7 +747,13 @@ export function Portfolio() {
           </div>
         </div>
       )}
-      <UploadModal open={showModal} onClose={() => setShowModal(false)} onSubmit={handleUpload} />
+      <UploadModal
+        open={uploadModalState.open}
+        status={uploadModalState.status}
+        message={uploadModalState.message}
+        onClose={handleModalClose}
+        onSubmit={handleModalSubmit}
+      />
     </div>
   );
 }
