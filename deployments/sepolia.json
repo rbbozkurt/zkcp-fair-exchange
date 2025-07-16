@@ -1,21 +1,21 @@
 {
   "network": "sepolia",
   "chainId": 11155111,
-  "deployer": "0xCcB68C335e84d86e83054aDf710551cf7cEbB2f9",
-  "blockNumber": 8730433,
-  "timestamp": 1752112669,
+  "deployer": "0xD26fabD116083C1eb5180c0dC0D97592c537e98a",
+  "blockNumber": 8733580,
+  "timestamp": 1752150456,
   "contracts": {
     "ZKVerifier": {
-      "address": "0x203349Ab860494c9A2B18b8E89a87601FFbD228F",
-      "transactionHash": "0xbf3482f55287a4865aa01131c14b294e135a7c7cc8ce291bc667bb3410ec7cbe"
+      "address": "0x84BEdcE85f2468e22bFd621156E83bBB97a3612c",
+      "transactionHash": "0x02f523136e058466ebd8a23b843fd9d7c5202c6f7fdd497b67616bf669dff9a1"
     },
     "DatasetNFT": {
-      "address": "0x493a3b520659ea42EAB8eE233765B908426213b8",
-      "transactionHash": "0x633ae5e0e4c52724b7942fee08ada19f8c17c54eed9692b84be7aa0b4c0cf391"
+      "address": "0xb1e32ac30040dA3CEDb09815CaAd3e09edDBd015",
+      "transactionHash": "0xc735f88e80f01258b3db900ff92a5b26f03049a68a2003902180cfe93bc7e6da"
     },
     "Escrow": {
-      "address": "0x9235DAf261A165a738450B1d31fa86AcF56a55f2",
-      "transactionHash": "0x0cb6706e60082af8637c7dd88f75f3fd560b71df119d7ad53de95b78eae66535"
+      "address": "0x63F7127275f638F02e6041E63b1dCE9284BE95aD",
+      "transactionHash": "0x71a5ea988cab2d2050911f172d76c5d1332b076e3eb73ad4e9cf80215582868a"
     }
   }
 }
