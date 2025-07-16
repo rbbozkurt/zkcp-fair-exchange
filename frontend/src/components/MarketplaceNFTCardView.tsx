@@ -15,7 +15,8 @@ const MarketPlaceNFTCardView: React.FC<MarketPlaceNFTCardViewProps> = ({ listing
 
   // Convert IPFS image URL to HTTP
   //const imageUrl = listingNFT.image?.replace('ipfs://', 'https://ipfs.io/ipfs/') || '';
-  const imageUrl = 'https://ipfs.io/ipfs/' + listingNFT.image;
+  //const imageUrl = 'https://ipfs.io/ipfs/' + listingNFT.image;
+  const imageUrl = 'https://gateway.pinata.cloud/ipfs/' + listingNFT.image;
   return (
     <div
       className="relative w-80 h-96 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl group border-2 border-white/20 hover:border-white/40"

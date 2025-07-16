@@ -124,7 +124,7 @@ const MarketPlaceNFTDetailCardView: React.FC<MarketPlaceNFTDetailCardViewProps> 
               <div className="flex flex-col items-center space-y-4">
                 <div className="w-full max-w-md">
                   <img
-                    src={`https://ipfs.io/ipfs/${nft.image}`}
+                    src={`https://gateway.pinata.cloud/ipfs/${nft.image}`}
                     alt={nft.name}
                     className="w-full h-auto max-h-96 object-cover rounded-2xl border-2 border-white/30 shadow-lg"
                     onError={(e) => {
