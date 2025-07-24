@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "./DatasetNFT.sol"; // Importing the DatasetNFT contract to use its functionality
+import "./ZK-Verifier-2.sol"; // Importing the ZK Verifier contract for proof verification
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // security against reentrancy attacks
 import "@openzeppelin/contracts/access/AccessControl.sol"; // extended access control mechanism
 
@@ -173,7 +174,7 @@ contract Escrow is ReentrancyGuard, AccessControl {
         );
 
         // NOTE: not necessary to deactivate! we want to sell licences
-        datasetNFTcontract.deactivateListing(purchase.listingTokenId);
+        //datasetNFTcontract.deactivateListing(purchase.listingTokenId);
 
         _transitionState(purchaseId, PurchaseState.DELIVERED, 0); // No timeout for delivered state
 
@@ -280,5 +281,10 @@ contract Escrow is ReentrancyGuard, AccessControl {
     function isPurchaseTerminal(uint256 purchaseId) public view returns (bool) {
         PurchaseState state = purchases[purchaseId].state;
         return state == PurchaseState.COMPLETED || state == PurchaseState.REFUNDED || state == PurchaseState.CANCELLED;
+    }
+
+    // control function to switch to ZK_PROOF_SUBMITTED state
+    function switchZKSubmitted(uint256 purchaseId) public  {
+        _transitionState(purchaseId, PurchaseState.ZK_PROOF_SUBMITTED, VERIFICATION_TIMEOUT);
     }
 }
