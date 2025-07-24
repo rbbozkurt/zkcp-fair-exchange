@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "./DatasetNFT.sol"; // Importing the DatasetNFT contract to use its functionality
-import "./ZK-Verifier-2.sol"; // Importing the ZK Verifier contract for proof verification
+import "./ZK-Verifier.sol"; // Importing the ZK Verifier contract for proof verification
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // security against reentrancy attacks
 import "@openzeppelin/contracts/access/AccessControl.sol"; // extended access control mechanism
 
@@ -17,6 +17,8 @@ contract Escrow is ReentrancyGuard, AccessControl {
     // it includes the buyer, seller, amount, and a boolean to indicate if the purchase is complete
 
     DatasetNFT public datasetNFTcontract; // Reference to the DatasetNFT contract
+    ZKVerifier public zkVerifier; // Reference to the ZK Verifier contract
+
     address public owner;
 
 
@@ -106,6 +108,11 @@ contract Escrow is ReentrancyGuard, AccessControl {
         datasetNFTcontract = DatasetNFT(_datasetNFTAddress);
     }
 
+    function setZKVerifier(address _zkVerifier) public onlyOwner {
+    require(_zkVerifier != address(0), "Invalid ZK verifier address");
+    zkVerifier = ZKVerifier(_zkVerifier);
+}
+
 
 
      // function for the buyer to initiate a purchase, specifying the seller and the dataset information they want to buy
@@ -154,6 +161,28 @@ contract Escrow is ReentrancyGuard, AccessControl {
         
         _transitionState(purchaseId, PurchaseState.VERIFIED, DELIVERY_TIMEOUT);
     }
+
+    function submitZKProof(
+    uint256 purchaseId, 
+    bytes calldata seal, 
+    bytes calldata journal
+) public onlySeller(purchaseId) onlyInState(purchaseId, PurchaseState.PAID) nonReentrant {
+    require(address(zkVerifier) != address(0), "ZK verifier not set");
+    
+    Purchase storage purchase = purchases[purchaseId];
+    
+    // Call your ZKVerifier contract to verify the proof
+    bool success = zkVerifier.verifyProof(seal, journal);
+    require(success, "ZK proof verification failed");
+    
+    // Store proof data
+    purchase.zkProofHash = keccak256(abi.encodePacked(seal, journal));
+    
+    // Transition to ZK_PROOF_SUBMITTED state
+    _transitionState(purchaseId, PurchaseState.ZK_PROOF_SUBMITTED, VERIFICATION_TIMEOUT);
+    
+    emit ZKProofSubmitted(purchaseId, purchase.zkProofHash);
+}
 
     function setEncryptedSecret(uint256 purchaseId, string memory encryptedSecret) public onlySeller(purchaseId) {
          purchases[purchaseId].encryptedSecret = encryptedSecret;
