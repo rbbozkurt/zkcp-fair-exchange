@@ -85,7 +85,7 @@ export function Marketplace() {
   };
 
   return (
-    <div className="bg-transparent text-white min-h-screen flex flex-col items-center pt-24 px-4">
+    <div className="bg-black text-white min-h-screen flex flex-col items-center pt-24 px-4">
       <div className="sticky w-full max-w-5xl text-center space-y-8">
         {/* Header with contract status */}
         <div className="top-0 z-40 bg-transparent border-b border-black/20">

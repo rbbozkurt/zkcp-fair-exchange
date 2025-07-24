@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  zkdrop-proof:
+    image: zkdrop-proof:latest
+    container_name: zkdrop-proof
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+    ports:
+      - "8095:8095"
+    env_file:
+      - .env
+    environment:
+      RISC0_DEV_MODE: "1"
+    restart: unless-stopped
+    platform: linux/amd64

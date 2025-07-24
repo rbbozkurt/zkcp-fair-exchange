@@ -1,0 +1,9 @@
+POST http://localhost:8081/aes-verify?prove_mode=local
+Content-Type: application/json
+
+{
+    "aes_key_hex": "de15a7f6957c3eb9a86689106a98e3bea6f4b7222a63aa0ba7afda647d2ff98d",
+    "iv_hex": "01020300000000000000000000000000",
+    "plaintext_utf8": "example fileeee ! ",
+    "ciphertext_hex": "ef8d7b4abcaea121953432bd58aa69589312"
+}
